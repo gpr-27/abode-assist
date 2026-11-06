@@ -246,7 +246,28 @@ The brief asks for "calm and premium, in keeping with the price of the homes", m
 - **States:** every page has loading skeletons, empty states that tell you what to do next ("No upcoming visit: Book a site visit"), and error states that say what failed and offer a retry. If the chat API is unreachable, the chat shows an offline card with "Try again"; if the AI is down, the chat says so and still offers slots.
 - **Accessibility:** visible focus rings, `aria-live` on the chat, labelled inputs, reduced-motion respected, and contrast checked: indigo on white is 11.0:1, stone on paper is 5.4:1.
 
-Key screens: landing → project page → chat with slot picker → consent form → booking card → My visits. On the staff side: lead list → lead detail with AI summary → visits check-in → dashboard → review queue → fact sheet → slots.
+### Key screens
+
+<div class="shots phones">
+<figure><img src="screens/buyer-chat-slots.png"><figcaption>Chat on a phone: answer from the fact sheet, then real open slots as tap targets</figcaption></figure>
+<figure><img src="screens/buyer-consent-error.png"><figcaption>Contact form: consent unticked by default; booking is refused until it's given</figcaption></figure>
+<figure><img src="screens/buyer-booked.png"><figcaption>Booking card: date, address, map, calendar file and RERA number</figcaption></figure>
+</div>
+
+<div class="shots phones">
+<figure><img src="screens/buyer-home-gu-mobile.png"><figcaption>Gujarati interface (Hind Vadodara), one tap from English or Hindi</figcaption></figure>
+<figure><img src="screens/buyer-project-mobile.png"><figcaption>Project page: facts, RERA number, next open times</figcaption></figure>
+<figure><img src="screens/staff-leads-mobile.png"><figcaption>Lead desk on a phone: rows stack, the response timer stays visible</figcaption></figure>
+</div>
+
+<div class="shots">
+<figure><img src="screens/buyer-home.png"><figcaption>Landing: one accent, the jaali drawing, a price and a next step for each project</figcaption></figure>
+<figure><img src="screens/staff-leads.png"><figcaption>One lead list from every source: source tags, owner, possible duplicates, response timer</figcaption></figure>
+<figure><img src="screens/staff-lead.png"><figcaption>Lead page: AI summary labelled as AI, chat history, visits, messages sent</figcaption></figure>
+<figure><img src="screens/staff-visits.png"><figcaption>Site-office check-in: past visits awaiting an outcome come first</figcaption></figure>
+<figure><img src="screens/staff-dashboard.png"><figcaption>Source dashboard with the brief's targets beside each number</figcaption></figure>
+<figure><img src="screens/staff-review.png"><figcaption>Daily review of flagged chats, with "Add this to the fact sheet"</figcaption></figure>
+</div>
 
 ---
 

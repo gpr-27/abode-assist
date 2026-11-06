@@ -57,18 +57,18 @@ export default async function MessagesPage({ searchParams }: PageProps<"/staff/m
       {rows.length === 0 ? <Empty title="No messages match">Messages appear when leads arrive with consent, visits are booked, or reminders fall due.</Empty> : (
         <ul className="divide-y divide-line rounded-2xl border border-line bg-white">
           {rows.map((o) => (
-            <li key={o.id} className="grid gap-3 px-5 py-4 md:grid-cols-[16rem_1fr]">
+            <li key={o.id} className="grid grid-cols-1 gap-3 px-5 py-4 md:grid-cols-[16rem_1fr] [&>*]:min-w-0">
               <div className="text-sm">
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="font-medium">{KIND_LABEL[o.kind] ?? o.kind}</span>
                   <Badge tone={OUTBOX_TONE[o.status]}>{OUTBOX_LABEL[o.status]}</Badge>
                 </div>
                 <p className="mt-1"><Link href={`/staff/leads/${o.lead_id}`} className="hover:text-indigo">{o.lead_name}</Link> <span className="text-xs text-stone num">{maskPhone(o.phone)}</span></p>
-                <p className="text-xs text-stone">{o.channel === "whatsapp" ? "WhatsApp" : "SMS"} · {o.template}</p>
+                <p className="text-xs text-stone [overflow-wrap:anywhere]">{o.channel === "whatsapp" ? "WhatsApp" : "SMS"} · {o.template}</p>
                 <p className="text-xs text-stone">{o.status === "sent" && o.sent_at ? `Sent ${formatDateTime(o.sent_at)}` : `${o.status === "scheduled" ? "Due" : "Was due"} ${formatDateTime(o.send_at)}`}</p>
                 {o.status_note && <p className="text-xs text-warn">{o.status_note}</p>}
               </div>
-              <p className="whitespace-pre-wrap rounded-xl bg-paper-2 px-4 py-3 text-sm">{o.body}</p>
+              <p className="whitespace-pre-wrap [overflow-wrap:anywhere] rounded-xl bg-paper-2 px-4 py-3 text-sm">{o.body}</p>
             </li>
           ))}
         </ul>

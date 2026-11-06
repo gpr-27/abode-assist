@@ -39,7 +39,7 @@ export default async function ProjectPage({ params }: PageProps<"/projects/[slug
         <Jaali className="hidden md:block h-56 justify-self-end text-indigo/60" />
       </section>
 
-      <div className="grid gap-12 md:grid-cols-[1.4fr_1fr]">
+      <div className="grid grid-cols-1 gap-12 md:grid-cols-[1.4fr_1fr] [&>*]:min-w-0">
         <section aria-labelledby="facts">
           <h2 id="facts" className="display text-2xl">{t.facts}</h2>
           <dl className="mt-6 divide-y divide-line border-y border-line">
@@ -73,7 +73,7 @@ export default async function ProjectPage({ params }: PageProps<"/projects/[slug
           <div className="mt-6 flex flex-col gap-2">
             <Link href={`/chat?project=${project.slug}&intent=visit`} className="btn btn-primary">{t.bookVisit}</Link>
             <Link href={`/chat?project=${project.slug}`} className="btn btn-ghost">{t.askAbout}</Link>
-            <a href={project.map_url} target="_blank" rel="noopener noreferrer" className="btn btn-quiet">{t.directions}: {project.address}</a>
+            <a href={project.map_url} target="_blank" rel="noopener noreferrer" className="btn btn-quiet whitespace-normal text-center leading-snug">{t.directions}: {project.address}</a>
           </div>
         </aside>
       </div>
