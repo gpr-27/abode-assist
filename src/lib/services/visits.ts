@@ -73,7 +73,7 @@ export async function cancelVisit(visitId: string, actorId: string | null, reaso
        where id = ${visitId} and status = 'booked' returning id, lead_id`;
     if (!v) return false;
     await cancelVisitMessages(tx, v.id, reason);
-    await tx`update leads set status = case when assigned_to is null then 'engaged' else 'handed_off' end
+    await tx`update leads set status = (case when assigned_to is null then 'engaged' else 'handed_off' end)::lead_status
               where id = ${v.lead_id} and status = 'visit_booked'`;
     await tx`insert into audit_log (actor_id, action, entity, entity_id, detail)
              values (${actorId}, 'cancel', 'visit', ${v.id}, ${tx.json({ reason })})`;

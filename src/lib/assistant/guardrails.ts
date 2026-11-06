@@ -13,7 +13,7 @@ export function detectLanguage(text: string, fallback: Lang = "en"): Lang {
 }
 
 const HUMAN_PATTERNS: RegExp[] = [
-  /\b(talk|speak|chat|connect)\s+(to|with)\s+(a\s+|an\s+|some\s*one|someone|your\s+)?(human|person|agent|executive|sales\s*(person|team|executive)?|manager|someone|real\s+person|team)\b/i,
+  /\b(talk|speak|chat|connect)\s+(?:me\s+)?(to|with)\s+(a\s+|an\s+|some\s*one|someone|your\s+)?(human|person|agent|executive|sales\s*(person|team|executive)?|manager|someone|real\s+person|team)\b/i,
   /\b(real|actual)\s+(human|person)\b/i,
   /\b(call\s+me|call\s+back|callback|phone\s+me|ring\s+me)\b/i,
   /\bhuman\b/i,
@@ -31,12 +31,12 @@ const DISCOUNT_RE =
   /\b(discount|discounted|offer\s+price|special\s+price|best\s+price|lowest\s+price|final\s+price|negotiab\w*|negotiat\w*|cash\s*back|waive[sd]?|free\s+(parking|registration|stamp\s+duty|gst|modular\s+kitchen))\b|(छूट|डिस्काउंट|कम\s*कीमत|फाइनल\s*प्राइस)|(ડિસ્કાઉન્ટ|છૂટ|ઓછી\s*કિંમત|ફાઇનલ\s*પ્રાઇસ)/i;
 
 const CLAIM_RE =
-  /\b(guarantee[ds]?|assured\s+(returns?|appreciation|rental)|will\s+(appreciate|double)|price\s+will\s+(rise|go\s+up)|investment\s+returns?|rental\s+yield\s+of|best\s+in\s+(the\s+)?city|no\.?\s*1)\b/i;
+  /\b(guarantee[ds]?|assured\s+(returns?|appreciation|rental)|will\s+(appreciate|double)|price\s+will\s+(rise|go\s+up)|investment\s+returns?|rental\s+yield\s+of|best\s+in\s+(the\s+)?city|(?:no\.?\s*1|number\s+one)\s+(?:project|developer|builder|in))\b/i;
 
 /** ₹ amounts, lakh/crore figures and bare 6+ digit sums mentioned in a reply. */
 export function extractMoney(text: string): string[] {
   const out = new Set<string>();
-  const re = /(?:₹|rs\.?|inr)\s*([\d.,]+)\s*(lakh|lac|lakhs|crore|cr|l|k)?|([\d.,]+)\s*(lakh|lac|lakhs|crore|cr)\b/gi;
+  const re = /(?:₹|rs\.?|inr)\s*([\d.,]+)\s*(lakh|lac|lakhs|crore|cr|l|k)?|([\d.,]+)\s*(lakh|lac|lakhs|crore|cr|l)\b/gi;
   let m: RegExpExecArray | null;
   while ((m = re.exec(text))) {
     const num = (m[1] ?? m[3] ?? "").replace(/,/g, "").replace(/\.$/, "");

@@ -9,10 +9,13 @@ function createClient() {
   const url = process.env.DATABASE_URL;
   if (!url) throw new Error("DATABASE_URL is not set");
   return postgres(url, {
-    // Supabase's transaction pooler (port 6543) does not support prepared statements.
+    // Use Supabase's session pooler (port 5432). postgres.js pipelines queries on a connection,
+    // and through the transaction pooler (6543) concurrent queries were seen to hang (see TDD).
+    // A small pool per instance keeps us inside the session pool limit.
     prepare: false,
-    max: 5,
-    idle_timeout: 20,
+    max: 3,
+    idle_timeout: 10,
+    max_lifetime: 60 * 10,
     connect_timeout: 10,
     onnotice: () => {},
   });
