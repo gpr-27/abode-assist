@@ -16,4 +16,4 @@ try {
       execute: async (i) => { called = JSON.stringify(i); return { slots: ["Sun 10:00", "Sun 11:00"] }; } }) },
   });
   console.log(only, "→", r.provider, r.model, `${Date.now()-t0}ms`, "tool:", called, "|", r.text.slice(0,120), "| failed attempts:", r.attempts.length);
-} catch (e) { console.log(only, "FAILED", (e as any).attempts ?? (e as Error).message); }
+} catch (e) { console.log(only, "FAILED", (e as { attempts?: unknown }).attempts ?? (e as Error).message); }

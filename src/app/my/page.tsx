@@ -9,7 +9,7 @@ import { cancelMyVisit, setMessages, signOut } from "./actions";
 
 export const metadata: Metadata = { title: "My site visits", robots: { index: false } };
 
-type VisitRow = { id: string; status: string; starts_at: Date; project: string; slug: string; address: string; map_url: string; rera_no: string; executive: string | null };
+type VisitRow = { id: string; status: string; starts_at: Date; upcoming: boolean; project: string; slug: string; address: string; map_url: string; rera_no: string; executive: string | null };
 
 const STATUS: Record<string, { label: string; tone: "indigo" | "ok" | "neutral" | "bad" }> = {
   booked: { label: "Booked", tone: "indigo" }, visited: { label: "Visited", tone: "ok" }, cancelled: { label: "Cancelled", tone: "neutral" }, no_show: { label: "Missed", tone: "bad" },
@@ -19,7 +19,7 @@ export default async function MyVisits() {
   const s = await requireRole("buyer");
   const [user] = await sql<{ phone: string }[]>`select phone from users where id = ${s.userId}`;
   const visits = await sql<VisitRow[]>`
-    select v.id, v.status, s.starts_at, p.name as project, p.slug, p.address, p.map_url, p.rera_no, u.name as executive
+    select v.id, v.status, s.starts_at, (v.status = 'booked' and s.starts_at > now()) as upcoming, p.name as project, p.slug, p.address, p.map_url, p.rera_no, u.name as executive
       from visits v join leads l on l.id = v.lead_id join visit_slots s on s.id = v.slot_id join projects p on p.id = s.project_id
       left join users u on u.id = l.assigned_to
      where l.buyer_user_id = ${s.userId}
@@ -29,8 +29,7 @@ export default async function MyVisits() {
   const messages = await sql<{ id: string; kind: string; body: string; status: string; send_at: Date }[]>`
     select o.id, o.kind, o.body, o.status, o.send_at from outbox o join leads l on l.id = o.lead_id
      where l.buyer_user_id = ${s.userId} and o.status in ('sent', 'scheduled') order by o.send_at desc limit 10`;
-  const now = Date.now();
-  const upcoming = visits.filter((v) => v.status === "booked" && new Date(v.starts_at).getTime() > now);
+  const upcoming = visits.filter((v) => v.upcoming);
   const past = visits.filter((v) => !upcoming.includes(v));
   const optedOut = !!prefs?.opted_out_at;
 

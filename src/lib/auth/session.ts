@@ -36,15 +36,18 @@ export async function destroySession() {
 export async function getSession(): Promise<Session | null> {
   const token = (await cookies()).get(COOKIE)?.value;
   if (!token) return null;
+  let sub: string | undefined;
   try {
     const { payload } = await jwtVerify(token, key(), { algorithms: ["HS256"] });
-    if (!payload.sub) return null;
-    const [u] = await sql<{ id: string; role: Role; name: string }[]>`
-      select id, role, name from users where id = ${payload.sub} and active`;
-    return u ? { userId: u.id, role: u.role, name: u.name } : null;
+    sub = payload.sub;
   } catch {
-    return null;
+    return null; // bad or expired token: treat as signed out
   }
+  if (!sub) return null;
+  // A database error must surface as an error page, not silently sign the user out.
+  const [u] = await sql<{ id: string; role: Role; name: string }[]>`
+    select id, role, name from users where id = ${sub} and active`;
+  return u ? { userId: u.id, role: u.role, name: u.name } : null;
 }
 
 export const isStaff = (s: Session | null): s is Session => !!s && (s.role === "executive" || s.role === "head");

@@ -88,9 +88,9 @@ async function main() {
       await tx`insert into facts (project_id, topic, answer, updated_by) values (${pid}, ${topic}, ${answer}, ${head.id})`;
     }
 
-    // ── Visit slots: 10 days back to 21 days ahead, 10:00–17:00 hourly, 2 visitors per slot ──
+    // ── Visit slots: 40 days back (history) to 21 days ahead, 10:00–17:00 hourly, 2 visitors per slot ──
     const slotIds: Record<string, Record<string, { id: string; starts: Date }>> = { [p1.id]: {}, [p2.id]: {} };
-    for (let d = -10; d <= 21; d++) {
+    for (let d = -40; d <= 21; d++) {
       const day = addDaysKey(TODAY, d);
       for (const pid of [p1.id, p2.id]) {
         for (let h = 10; h <= 17; h++) {
@@ -162,7 +162,7 @@ async function main() {
       let status = !reachedOk ? "new" : engaged ? "handed_off" : "engaged";
       let visit: LeadSeed["visit"];
       const vr = rnd();
-      if (engaged && vr < 0.30) {
+      if (engaged && vr < 0.40) {
         // Visit 1–6 days after the enquiry, at 10–17h.
         const vDay = addDaysKey(istDateKey(createdAt), 1 + Math.floor(rnd() * 6));
         const slot = slotIds[project][`${vDay} ${10 + Math.floor(rnd() * 8)}`];

@@ -27,6 +27,7 @@ export function ChatClient({ initialLang, project, slotId, intent }: Props) {
   const bottom = useRef<HTMLDivElement>(null);
   const started = useRef(false);
   const t = T[lang];
+  const projectSlug = project?.slug ?? null;
 
   const merge = useCallback((incoming: ChatMessage[]) => {
     setMessages((prev) => {
@@ -45,7 +46,7 @@ export function ChatClient({ initialLang, project, slotId, intent }: Props) {
     try {
       const res = await fetch("/api/chat", {
         method: "POST", headers: { "content-type": "application/json" },
-        body: JSON.stringify({ ...payload, lang, project: project?.slug ?? null }),
+        body: JSON.stringify({ ...payload, lang, project: projectSlug }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error ?? t.chatOffline);
@@ -59,7 +60,7 @@ export function ChatClient({ initialLang, project, slotId, intent }: Props) {
       if (payload.text) setText(payload.text);
       setStatus("ready");
     }
-  }, [lang, project?.slug, merge, t.chatOffline]);
+  }, [lang, projectSlug, merge, t.chatOffline]);
 
   const load = useCallback(async () => {
     setStatus("loading");
