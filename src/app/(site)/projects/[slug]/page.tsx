@@ -12,7 +12,8 @@ import { Jaali } from "@/components/ui";
 
 export async function generateMetadata({ params }: PageProps<"/projects/[slug]">): Promise<Metadata> {
   const p = await getProject((await params).slug);
-  return p ? { title: `${p.name}, ${p.locality}`, description: p.hero_note } : {};
+  if (!p) notFound(); // runs before streaming starts, so the response is a real 404
+  return { title: `${p.name}, ${p.locality}`, description: p.hero_note };
 }
 
 export default async function ProjectPage({ params }: PageProps<"/projects/[slug]">) {
