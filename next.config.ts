@@ -11,7 +11,7 @@ const nextConfig: NextConfig = {
   // Pages read cookies and live data on every request; we render them dynamically
   // and cache only the static marketing shell.
   poweredByHeader: false,
-  serverExternalPackages: ["postgres", "bcryptjs"],
+  serverExternalPackages: ["pg", "bcryptjs"],
   turbopack: {
     rules: {
       "*.css": { loaders: ["@tailwindcss/turbopack"], as: "*.css" },

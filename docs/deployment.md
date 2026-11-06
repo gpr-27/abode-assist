@@ -52,7 +52,7 @@ cp .env.example .env.local        # fill in the values (names listed below)
      -- pgcrypto and pg_trgm are already in the extensions schema on Supabase; elsewhere:
      -- create extension if not exists pgcrypto; create extension if not exists pg_trgm;
      ```
-  3. Set `DATABASE_URL` and `DIRECT_DATABASE_URL` to the **session pooler** (port **5432**) with user `abode_app.<project-ref>`.
+  3. Set `DATABASE_URL` to the **transaction pooler** (port **6543**) and `DIRECT_DATABASE_URL` to the **session pooler** (port **5432**), both with user `abode_app.<project-ref>`.
 - **Local Postgres:** create a database and a role, run `create schema app` owned by that role, install `pgcrypto` and `pg_trgm`, then point both URLs at it.
 
 Then:
@@ -78,7 +78,7 @@ If you run without any LLM key, the chat still works: buttons, slot booking, the
 ## How it is deployed
 
 - **Hosting:** Vercel project `abode-assist`, linked to the GitHub repo (pushes to `main` deploy to production; other branches get preview URLs). Node.js runtime on Fluid Compute. Functions run in **`bom1` (Mumbai)**, next to the database.
-- **Database:** Supabase Postgres, project `abode-assist`, region ap-south-1 (Mumbai). The app connects as its own role to the private `app` schema through the session pooler.
+- **Database:** Supabase Postgres, project `abode-assist`, region ap-south-1 (Mumbai). The app connects as its own role to the private `app` schema through the transaction pooler.
 - **Cron:** `vercel.json` schedules `GET /api/cron/reminders` (Vercel sends `Authorization: Bearer $CRON_SECRET`). It dispatches due WhatsApp/SMS reminders from the outbox, which are mocked. Vercel Hobby allows one run a day, so the dispatcher also runs whenever staff open the Leads, Visits or Messages pages, and there's a **Send due messages now** button on Messages. On a paid plan, set the schedule to every 5 minutes.
 - **Deploy steps used:**
   ```bash
@@ -92,7 +92,7 @@ If you run without any LLM key, the chat still works: buttons, slot booking, the
 
 | Name | Required | Purpose |
 |---|---|---|
-| `DATABASE_URL` | yes | Postgres connection used by the app (session pooler, port 5432) |
+| `DATABASE_URL` | yes | Postgres connection used by the app (Supabase transaction pooler, port 6543) |
 | `DIRECT_DATABASE_URL` | for scripts | Used by `db:migrate` and `db:seed` (and tests); falls back to `DATABASE_URL` |
 | `SESSION_SECRET` | yes | 32+ characters; signs session cookies and salts OTP hashes |
 | `CRON_SECRET` | yes on Vercel | Bearer token Vercel Cron sends to `/api/cron/reminders` |
