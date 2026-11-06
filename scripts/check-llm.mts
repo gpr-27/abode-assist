@@ -5,7 +5,7 @@ import { tool } from "ai";
 import { z } from "zod";
 const only = process.argv[2];
 for (const k of ["ANTHROPIC_API_KEY","GROQ_API_KEY","GROQ_API_KEY_2","GEMINI_API_KEY","GEMINI_API_KEY_2"]) if (k !== only) delete process.env[k];
-const { runChain } = await import("../src/lib/assistant/providers.ts");
+const { runChain } = await import("../src/lib/assistant/providers");
 let called = "";
 const t0 = Date.now();
 try {
