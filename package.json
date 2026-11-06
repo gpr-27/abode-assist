@@ -13,7 +13,8 @@
     "db:reset": "tsx scripts/migrate.ts --reset",
     "db:seed": "tsx scripts/seed.ts",
     "typecheck": "tsc --noEmit",
-    "llm:check": "tsx --conditions=react-server scripts/check-llm.mts"
+    "llm:check": "tsx --conditions=react-server scripts/check-llm.mts",
+    "db:summaries": "tsx --conditions=react-server scripts/summarize-seed.mts"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^4.0.97",

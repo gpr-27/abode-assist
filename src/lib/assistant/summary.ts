@@ -3,13 +3,17 @@ import { z } from "zod";
 import { sql } from "../db";
 import { runChain } from "./providers";
 
+/** Trim to a limit at a word boundary, with an ellipsis. */
+const clip = (n: number) => (v: string) => (v.length <= n ? v : `${v.slice(0, n).replace(/\s+\S*$/, "")}…`);
+
 const SummarySchema = z.object({
-  summary: z.string().min(5).max(600),
-  wants: z.string().max(40).nullable(),
-  budget: z.string().max(60).nullable(),
-  timeline: z.string().max(60).nullable(),
+  // Over-long fields are trimmed rather than rejected: a slightly long note beats no note.
+  summary: z.string().min(5).transform(clip(700)),
+  wants: z.string().nullable().transform((v) => (v ? clip(40)(v) : null)),
+  budget: z.string().nullable().transform((v) => (v ? clip(60)(v) : null)),
+  timeline: z.string().nullable().transform((v) => (v ? clip(90)(v) : null)),
   intent: z.enum(["hot", "warm", "cold"]),
-  open_questions: z.array(z.string().max(160)).max(5),
+  open_questions: z.array(z.string().transform(clip(160))).transform((v) => v.slice(0, 5)),
 });
 export type LeadSummary = z.infer<typeof SummarySchema> & { generatedBy: string };
 

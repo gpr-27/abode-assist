@@ -62,7 +62,7 @@ export default async function ReviewPage({ searchParams }: PageProps<"/staff/rev
                   </div>
                   <div className="flex flex-wrap gap-1.5">
                     {c.flag_reasons.map((r) => <Badge key={r} tone="warn">{FLAG_LABEL[r] ?? r}</Badge>)}
-                    {c.handoff_reason && <Badge tone="indigo">{HANDOFF_LABEL[c.handoff_reason as HandoffReason] ?? c.handoff_reason}</Badge>}
+                    {c.handoff_reason && !c.flag_reasons.some((r) => (FLAG_LABEL[r] ?? r) === HANDOFF_LABEL[c.handoff_reason as HandoffReason]) && <Badge tone="indigo">{HANDOFF_LABEL[c.handoff_reason as HandoffReason] ?? c.handoff_reason}</Badge>}
                   </div>
                 </div>
                 <ol className="space-y-2 px-5 py-4 text-sm">

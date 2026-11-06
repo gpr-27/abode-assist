@@ -173,6 +173,11 @@ async function main() {
           status = vs === "visited" ? "visited" : vs === "booked" ? "visit_booked" : "handed_off";
         }
       }
+      // Recent serious leads with no visit yet: book one in the coming week so the calendar has a realistic load.
+      if (!visit && engaged && NOW.getTime() - createdAt.getTime() < 8 * 86400_000 && rnd() < 0.55) {
+        const slot = slotIds[project][`${addDaysKey(TODAY, 1 + Math.floor(rnd() * 7))} ${10 + Math.floor(rnd() * 8)}`];
+        if (slot) { visit = { slot, status: "booked" }; status = "visit_booked"; }
+      }
       if (!visit && engaged && rnd() < 0.08) status = "lost";
       leads.push({
         name, phone: phoneFor(i), source, project, wants, createdAt, consent, responseMin, assigned, status, visit,
@@ -203,7 +208,7 @@ async function main() {
       }
       if (l.visit) {
         const [v] = await tx`insert into visits (lead_id, slot_id, status, booked_via, created_at)
-                             values (${row.id}, ${l.visit.slot.id}, ${l.visit.status}, ${l.source === "chat" ? "assistant" : "executive"}, ${l.createdAt}) returning id`;
+                             values (${row.id}, ${l.visit.slot.id}, ${l.visit.status}, ${l.source === "chat" || l.code === "LD-58210" ? "assistant" : "executive"}, ${l.createdAt}) returning id`;
         const proj = l.project === p1.id ? { name: "Project 1", rera: "PR/GJ/AHMEDABAD/DASKROI/AUDA/DEMO-P1/2025", addr: "Site office, Shela–Bopal Road, Shela, Ahmedabad 380058", map: "https://maps.google.com/?q=23.0040,72.4660" }
                                          : { name: "Project 2", rera: "PR/GJ/AHMEDABAD/GANDHINAGAR/AUDA/DEMO-P2/2025", addr: "Site office, off S.G. Highway, Gota, Ahmedabad 382481", map: "https://maps.google.com/?q=23.1020,72.5410" };
         const [lt] = await tx<{ optout_token: string }[]>`select optout_token from leads where id = ${row.id}`;
@@ -237,7 +242,8 @@ async function main() {
     // ── Conversations ─────────────────────────────────────
     const conv = async (leadName: string, projectId: string, lang: string, lines: [string, string, object[]?][], opts: { flagged?: string[]; handoff?: string; minutesAgo: number }) => {
       const leadId = leadIds[leadName] ?? null;
-      const startAt = new Date(NOW.getTime() - opts.minutesAgo * 60_000);
+      // The chat starts the moment the lead arrived, so response times and timestamps agree.
+      const startAt = leads.find((l) => l.name === leadName)?.createdAt ?? new Date(NOW.getTime() - opts.minutesAgo * 60_000);
       const [c] = await tx`insert into conversations (lead_id, visitor_key, project_id, language, flagged, flag_reasons, handoff_at, handoff_reason, created_at, updated_at)
                            values (${leadId}, ${"seed-" + leadName.replace(/\s/g, "-").toLowerCase()}, ${projectId}, ${lang},
                                    ${!!opts.flagged?.length}, ${opts.flagged ?? []}, ${opts.handoff ? new Date(startAt.getTime() + lines.length * 40_000) : null},
