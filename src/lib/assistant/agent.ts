@@ -102,7 +102,7 @@ async function doHandoff(conv: ConvRow, lang: Lang, reason: HandoffReason, note?
 }
 
 /** Book from a button tap or a tool call. Returns the assistant line and cards. */
-async function bookFor(conv: ConvRow, lang: Lang, slotId: string, projects: ProjectRow[]): Promise<{ text: string; cards: Card[]; booked: boolean }> {
+async function bookFor(conv: ConvRow, lang: Lang, slotId: string, projects: ProjectRow[], partySize?: number): Promise<{ text: string; cards: Card[]; booked: boolean }> {
   const [slot] = await sql<{ id: string; project_id: string; starts_at: Date }[]>`select id, project_id, starts_at from visit_slots where id = ${slotId}`;
   const project = slot ? projects.find((p) => p.id === slot.project_id) : undefined;
   if (!slot || !project) return { text: BOOKING_ERRORS.SLOT_NOT_FOUND, cards: [], booked: false };
@@ -115,7 +115,7 @@ async function bookFor(conv: ConvRow, lang: Lang, slotId: string, projects: Proj
     return { text: COPY[lang].needContact(when), cards: [{ type: "contact_form", reason: "booking", pendingSlot: when }], booked: false };
   }
 
-  const res = await bookVisit({ leadId: lead.id, slotId, via: "assistant" });
+  const res = await bookVisit({ leadId: lead.id, slotId, via: "assistant", partySize });
   if (!res.ok) {
     const alt = await suggestSlots(project);
     const msg = BOOKING_ERRORS[res.code] ?? "That time couldn't be booked.";
@@ -157,8 +157,11 @@ export async function handleAction(conv: ConvRow, action: ChatAction, lang: Lang
     const [slot] = await sql<{ starts_at: Date }[]>`select starts_at from visit_slots where id = ${action.slotId}`;
     out.push(await save(conv.id, "buyer", slot ? `Book ${formatDateTime(slot.starts_at, LOCALE[lang])}` : "Book this time", [], { action: "book" }));
     const r = await bookFor(conv, lang, action.slotId, projects);
+    if (r.booked) {
+      const h = await doHandoff(conv, lang, "serious_buyer", "Booked a site visit");
+      if (h.card?.type === "handoff") r.cards.push(h.card);
+    }
     out.push(await save(conv.id, "assistant", r.text, r.cards, { action: "book" }));
-    if (r.booked) await doHandoff(conv, lang, "serious_buyer", "Booked a site visit");
     return out;
   }
 
@@ -184,8 +187,11 @@ export async function handleAction(conv: ConvRow, action: ChatAction, lang: Lang
     out.push(await save(conv.id, "buyer", `${action.name.trim()} · ${phone.replace(/^\+91(\d{5})(\d{5})$/, "+91 $1 $2")}`, [], { action: "contact", consent: true }));
     if (conv.pending_slot_id) {
       const r = await bookFor(conv, lang, conv.pending_slot_id, projects);
+      if (r.booked) {
+        const h = await doHandoff(conv, lang, "serious_buyer", "Booked a site visit");
+        if (h.card?.type === "handoff") r.cards.push(h.card);
+      }
       out.push(await save(conv.id, "assistant", `${COPY[lang].contactSaved} ${r.text}`, r.cards, { action: "contact" }));
-      if (r.booked) await doHandoff(conv, lang, "serious_buyer", "Booked a site visit");
     } else if (conv.handoff_at) {
       const h = await doHandoff(conv, lang, "buyer_request");
       out.push(await save(conv.id, "assistant", `${COPY[lang].contactSaved} ${h.text}`, h.card ? [h.card] : [], { action: "contact" }));
@@ -263,9 +269,12 @@ export async function handleText(conv: ConvRow, text: string, uiLang: Lang): Pro
     }),
     book_visit: tool({
       description: "Book or move the buyer's site visit to a slot_id returned by get_free_slots.",
-      inputSchema: z.object({ slot_id: z.string().uuid() }),
-      execute: async ({ slot_id }) => {
-        const r = await bookFor(conv, lang, slot_id, ctx.projects);
+      inputSchema: z.object({
+        slot_id: z.string().uuid(),
+        party_size: z.number().int().min(1).max(8).optional().describe("How many people are coming, if the buyer said"),
+      }),
+      execute: async ({ slot_id, party_size }) => {
+        const r = await bookFor(conv, lang, slot_id, ctx.projects, party_size);
         for (const c of r.cards) {
           const i = cards.findIndex((x) => x.type === c.type);
           if (i >= 0) cards.splice(i, 1);
@@ -371,7 +380,8 @@ export async function handleText(conv: ConvRow, text: string, uiLang: Lang): Pro
     if (h.card && !cards.some((c) => c.type === h.card!.type)) cards.push(h.card);
     if (!ctx.lead && !cards.some((c) => c.type === "contact_form")) cards.push({ type: "contact_form", reason: "handoff" });
   } else if (booked) {
-    await doHandoff(conv, lang, "serious_buyer", "Booked a site visit");
+    const h = await doHandoff(conv, lang, "serious_buyer", "Booked a site visit");
+    if (h.card?.type === "handoff") cards.push(h.card);
   }
   out.push(await save(conv.id, "assistant", reply, cards, meta));
   return out;
