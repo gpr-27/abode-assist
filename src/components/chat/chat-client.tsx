@@ -123,7 +123,7 @@ export function ChatClient({ initialLang, project, slotId, intent }: Props) {
       <header className="border-b border-line bg-paper/95 backdrop-blur">
         <div className="mx-auto flex max-w-3xl items-center justify-between gap-3 px-4 py-3">
           <div className="min-w-0">
-            <Link href={project ? `/projects/${project.slug}` : "/"} className="text-sm text-stone hover:text-ink">← {t.brand}</Link>
+            <Link href={project ? `/projects/${project.slug}` : "/"} className="text-sm text-stone hover:text-ink" aria-label={t.brand}>←<span className="hidden sm:inline"> {t.brand}</span></Link>
             <p className="display truncate text-lg leading-tight">{project ? `${project.name}, ${project.locality}` : t.chatTitle}</p>
           </div>
           <div className="flex shrink-0 items-center gap-2">

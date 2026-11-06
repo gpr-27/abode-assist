@@ -40,8 +40,8 @@ export default async function Home() {
               <h2 className="display mt-1 text-4xl">{p.name}</h2>
               <p className="mt-3 text-stone">{p.hero_note}</p>
               <dl className="mt-8 grid grid-cols-1 gap-5 text-sm sm:grid-cols-2">
-                <div><dt className="text-stone">{t.homes}</dt><dd className="mt-1">{p.config?.replace(/\s*\(.*?\)/g, "")}</dd></div>
-                <div><dt className="text-stone">{t.possession}</dt><dd className="mt-1">{p.possession?.replace(/^Possession as per RERA registration:\s*/, "")}</dd></div>
+                <div><dt className="text-stone">{t.homes}</dt><dd className="mt-1">{p.config?.replace(/\s*\(.*?\)/g, "").replace(/\.$/, "")}</dd></div>
+                <div><dt className="text-stone">{t.possession}</dt><dd className="mt-1">{p.possession?.replace(/^Possession as per RERA registration:\s*/, "").replace(/\.$/, "")}</dd></div>
                 <div className="sm:col-span-2"><dt className="text-stone">{t.from}</dt><dd className="display mt-1 text-xl">{p.price}</dd></div>
               </dl>
               <p className="mt-8 text-xs text-stone">{t.rera} {p.rera_no}</p>

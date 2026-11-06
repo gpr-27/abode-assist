@@ -36,15 +36,21 @@ export function partOfDay(d: Date): Exclude<PartOfDay, "any"> {
 /** Spread suggestions across days so the buyer sees choice, not five slots on the same morning. */
 export function pickSuggestions(slots: FreeSlot[], part: PartOfDay = "any", max = 6): FreeSlot[] {
   const filtered = part === "any" ? slots : slots.filter((s) => partOfDay(new Date(s.starts_at)) === part);
-  const perDay = new Map<string, number>();
-  const out: FreeSlot[] = [];
+  // Per IST day: the earliest open slot, then the first one at least 3 hours later (so a morning and an afternoon).
+  const byDay = new Map<string, FreeSlot[]>();
   for (const s of filtered) {
     const key = new Date(new Date(s.starts_at).getTime() + 330 * 60_000).toISOString().slice(0, 10);
-    const n = perDay.get(key) ?? 0;
-    if (n >= 2) continue;
-    perDay.set(key, n + 1);
-    out.push(s);
-    if (out.length >= max) break;
+    byDay.set(key, [...(byDay.get(key) ?? []), s]);
+  }
+  const out: FreeSlot[] = [];
+  for (const day of byDay.values()) {
+    const first = day[0];
+    const t0 = new Date(first.starts_at).getTime();
+    const second = day.find((s) => new Date(s.starts_at).getTime() >= t0 + 3 * 3600_000) ?? day[1];
+    for (const s of second ? [first, second] : [first]) {
+      if (out.length >= max) return out;
+      out.push(s);
+    }
   }
   return out;
 }

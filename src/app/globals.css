@@ -49,9 +49,10 @@ body {
 
 :focus-visible { outline: 2px solid var(--indigo); outline-offset: 2px; border-radius: 4px; }
 
-.display { font-family: var(--font-serif), var(--font-deva), var(--font-guj), Georgia, serif; font-weight: 300; letter-spacing: -0.015em; }
-.num { font-variant-numeric: tabular-nums; }
+@layer components { .display { font-family: var(--font-serif), var(--font-deva), var(--font-guj), Georgia, serif; font-weight: 300; letter-spacing: -0.015em; }
+.num { font-variant-numeric: tabular-nums; } }
 
+@layer components {
 /* Form controls share one look across buyer and staff screens. */
 .field {
   width: 100%; border: 1px solid var(--line); background: #fff; border-radius: 10px;
@@ -74,6 +75,7 @@ body {
 .btn-quiet { color: var(--stone); padding-inline: 0.5rem; }
 .btn-quiet:hover { color: var(--ink); }
 .btn-sm { padding: 0.4rem 0.85rem; font-size: 0.84rem; }
+}
 
 @keyframes rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 .rise { animation: rise 260ms ease-out both; }
