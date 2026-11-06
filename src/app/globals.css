@@ -1,0 +1,90 @@
+@import "tailwindcss";
+
+/*
+ * Abode Assist — tokens
+ * Paper #FBFBF9 · Ink #1A1D1F · Stone #64686C · Line #E4E5E2 · Indigo #2B3A67 (the one accent)
+ * Semantic status colours are used only for state, never decoration.
+ */
+:root {
+  --paper: #fbfbf9;
+  --paper-2: #f3f4f1;
+  --ink: #1a1d1f;
+  --stone: #64686c;
+  --line: #e4e5e2;
+  --indigo: #2b3a67;
+  --indigo-soft: #eceef5;
+  --ok: #2f6b4f;
+  --ok-soft: #e8f1ec;
+  --warn: #8a5a0b;
+  --warn-soft: #f7efe0;
+  --bad: #a3352f;
+  --bad-soft: #f7e7e5;
+}
+
+@theme inline {
+  --color-paper: var(--paper);
+  --color-paper-2: var(--paper-2);
+  --color-ink: var(--ink);
+  --color-stone: var(--stone);
+  --color-line: var(--line);
+  --color-indigo: var(--indigo);
+  --color-indigo-soft: var(--indigo-soft);
+  --color-ok: var(--ok);
+  --color-ok-soft: var(--ok-soft);
+  --color-warn: var(--warn);
+  --color-warn-soft: var(--warn-soft);
+  --color-bad: var(--bad);
+  --color-bad-soft: var(--bad-soft);
+  --font-sans: var(--font-body), var(--font-deva), var(--font-guj), system-ui, sans-serif;
+  --font-display: var(--font-serif), var(--font-deva), var(--font-guj), Georgia, serif;
+}
+
+html { -webkit-text-size-adjust: 100%; }
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-body), var(--font-deva), var(--font-guj), system-ui, sans-serif;
+  font-feature-settings: "ss01", "tnum" 0;
+}
+
+:focus-visible { outline: 2px solid var(--indigo); outline-offset: 2px; border-radius: 4px; }
+
+.display { font-family: var(--font-serif), var(--font-deva), var(--font-guj), Georgia, serif; font-weight: 300; letter-spacing: -0.015em; }
+.num { font-variant-numeric: tabular-nums; }
+
+/* Form controls share one look across buyer and staff screens. */
+.field {
+  width: 100%; border: 1px solid var(--line); background: #fff; border-radius: 10px;
+  padding: 0.7rem 0.85rem; font-size: 0.95rem; line-height: 1.3; color: var(--ink);
+  transition: border-color 120ms;
+}
+.field:focus { outline: none; border-color: var(--indigo); box-shadow: 0 0 0 3px var(--indigo-soft); }
+.field[aria-invalid="true"] { border-color: var(--bad); }
+
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem;
+  border-radius: 999px; padding: 0.7rem 1.25rem; font-size: 0.93rem; font-weight: 500;
+  transition: background 120ms, color 120ms, border-color 120ms; white-space: nowrap;
+}
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.btn-primary { background: var(--indigo); color: #fff; }
+.btn-primary:hover:not(:disabled) { background: #223056; }
+.btn-ghost { border: 1px solid var(--line); background: #fff; color: var(--ink); }
+.btn-ghost:hover:not(:disabled) { border-color: var(--ink); }
+.btn-quiet { color: var(--stone); padding-inline: 0.5rem; }
+.btn-quiet:hover { color: var(--ink); }
+.btn-sm { padding: 0.4rem 0.85rem; font-size: 0.84rem; }
+
+@keyframes rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+.rise { animation: rise 260ms ease-out both; }
+@keyframes pulse-dot { 0%, 80%, 100% { opacity: 0.25; } 40% { opacity: 1; } }
+.typing span { display: inline-block; width: 6px; height: 6px; border-radius: 999px; background: var(--stone); animation: pulse-dot 1.2s infinite; }
+.typing span:nth-child(2) { animation-delay: 0.15s; }
+.typing span:nth-child(3) { animation-delay: 0.3s; }
+
+@keyframes shimmer { from { background-position: -200px 0; } to { background-position: 200px 0; } }
+.skeleton { background: linear-gradient(90deg, var(--paper-2) 0, #ecedea 50%, var(--paper-2) 100%); background-size: 400px 100%; animation: shimmer 1.2s infinite linear; border-radius: 8px; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
+}
