@@ -1,22 +1,20 @@
 import Link from "next/link";
 import { Jaali } from "@/components/ui";
 import { currentLang } from "@/lib/lang";
-import { getFact, getProjects } from "@/lib/queries";
+import { getFacts, getProjects } from "@/lib/queries";
 import { T } from "@/lib/i18n";
 
 export default async function Home() {
   const lang = await currentLang();
   const t = T[lang];
-  const projects = await getProjects();
-  const details = await Promise.all(
-    projects.map(async (p) => ({
-      ...p,
-      price: await getFact(p.id, "Indicative price range"),
-      config: await getFact(p.id, "Configurations"),
-      possession: await getFact(p.id, "Possession"),
-      homes: await getFact(p.id, "Towers and homes"),
-    })),
-  );
+  const [projects, facts] = await Promise.all([getProjects(), getFacts(null)]);
+  const fact = (projectId: string, topic: string) => facts.find((f) => f.project_id === projectId && f.topic === topic)?.answer ?? null;
+  const details = projects.map((p) => ({
+    ...p,
+    price: fact(p.id, "Indicative price range"),
+    config: fact(p.id, "Configurations"),
+    possession: fact(p.id, "Possession"),
+  }));
 
   return (
     <>

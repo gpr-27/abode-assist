@@ -1,36 +1,17 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Abode Assist
 
-## Getting Started
+AI lead-response and site-visit booking assistant for a residential developer in Ahmedabad (2 projects, 420 homes).
 
-First, run the development server:
+**Live:** https://abode-assist.vercel.app · **Docs:** [Technical design](docs/TDD.md) · [Deployment and demo logins](docs/deployment.md)
+
+- **Buyers** (mostly on phones) ask questions in English, हिंदी or ગુજરાતી. The assistant answers only from the sales head's fact sheet, never quotes a final price or discount, and books a site visit in a real free slot. Reminders go out 1 day and 2 hours before.
+- **Sales executives** get one lead list from every source, with duplicate checks, response timers, the chat history, an AI summary on handoff, and site-office check-in.
+- **The sales head** edits the fact sheet and visit slots, reviews flagged chats daily, and sees response time, visits, show-up rate and cost per visit by source.
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+pnpm install && cp .env.example .env.local   # fill in values
+pnpm db:migrate && pnpm db:seed && pnpm dev
+pnpm test                                     # 146 tests, including DB race tests for double booking
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
-
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Stack: Next.js 16 (App Router) · PostgreSQL on Supabase · AI SDK 7 with a 5-step provider chain (Claude Sonnet → Groq ×2 → Gemini ×2) · Vercel.
