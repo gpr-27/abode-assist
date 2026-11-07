@@ -7,6 +7,7 @@ import bcrypt from "bcryptjs";
 import { config } from "dotenv";
 import { planReminders, renderMessage, TEMPLATES } from "../src/lib/reminders";
 import { addDaysKey, istDateKey, istInstant } from "../src/lib/time";
+import { VISIT_MINUTES } from "../src/lib/slots";
 
 config({ path: ".env.local" });
 const url = process.env.DIRECT_DATABASE_URL ?? process.env.DATABASE_URL;
@@ -96,7 +97,7 @@ async function main() {
         for (let h = 10; h <= 17; h++) {
           const starts = istInstant(day, h);
           const [s] = await tx`insert into visit_slots (project_id, starts_at, ends_at, capacity)
-                               values (${pid}, ${starts}, ${new Date(starts.getTime() + 45 * 60_000)}, 2) returning id`;
+                               values (${pid}, ${starts}, ${new Date(starts.getTime() + VISIT_MINUTES * 60_000)}, 2) returning id`;
           slotIds[pid][`${day} ${h}`] = { id: s.id, starts };
         }
       }
@@ -216,11 +217,11 @@ async function main() {
                       executiveName: execs.find((e) => e.id === l.assigned)?.name ?? null, optoutUrl: `${APP_URL}/optout/${lt.optout_token}` };
         const bookedAt = new Date(Math.min(l.createdAt.getTime() + 30 * 60_000, l.visit.slot.starts.getTime() - 3 * 3600_000));
         await tx`insert into outbox (lead_id, visit_id, kind, template, body, send_at, status, sent_at)
-                 values (${row.id}, ${v.id}, 'confirmation', ${TEMPLATES.confirmation}, ${renderMessage("confirmation", ctx)}, ${bookedAt}, 'sent', ${bookedAt})`;
+                 values (${row.id}, ${v.id}, 'confirmation', ${TEMPLATES.confirmation}, ${renderMessage("confirmation", ctx, (l.language ?? "en") as "en" | "hi" | "gu")}, ${bookedAt}, 'sent', ${bookedAt})`;
         for (const p of planReminders(l.visit.slot.starts, bookedAt, false)) {
           const due = p.send_at.getTime() <= NOW.getTime();
           await tx`insert into outbox (lead_id, visit_id, kind, template, body, send_at, status, sent_at, status_note)
-                   values (${row.id}, ${v.id}, ${p.kind}, ${TEMPLATES[p.kind]}, ${renderMessage(p.kind, ctx)}, ${p.send_at},
+                   values (${row.id}, ${v.id}, ${p.kind}, ${TEMPLATES[p.kind]}, ${renderMessage(p.kind, ctx, (l.language ?? "en") as "en" | "hi" | "gu")}, ${p.send_at},
                            ${p.status === "skipped" ? "skipped" : due ? "sent" : "scheduled"}, ${p.status !== "skipped" && due ? p.send_at : null}, ${p.note ?? null})`;
         }
       }
@@ -291,7 +292,7 @@ async function main() {
 }
 
 async function adHocSlot(tx: postgres.TransactionSql, projectId: string, starts: Date) {
-  const [s] = await tx`insert into visit_slots (project_id, starts_at, ends_at, capacity) values (${projectId}, ${starts}, ${new Date(starts.getTime() + 45 * 60_000)}, 2)
+  const [s] = await tx`insert into visit_slots (project_id, starts_at, ends_at, capacity) values (${projectId}, ${starts}, ${new Date(starts.getTime() + VISIT_MINUTES * 60_000)}, 2)
                        on conflict (project_id, starts_at) do update set capacity = excluded.capacity returning id`;
   return { id: s.id as string, starts };
 }

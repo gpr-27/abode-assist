@@ -21,15 +21,18 @@ export async function issueOtp(phone: string): Promise<{ code: string } | { erro
 }
 
 export async function verifyOtp(phone: string, code: string): Promise<boolean> {
-  const [row] = await sql<{ id: string; code_hash: string; attempts: number }[]>`
-    select id, code_hash, attempts from otp_codes
-     where phone = ${phone} and used_at is null and expires_at > now()
-     order by created_at desc limit 1`;
-  if (!row || row.attempts >= MAX_ATTEMPTS) return false;
+  // One atomic statement counts the attempt and returns the code to compare, so parallel guesses
+  // cannot exceed the limit (a read-then-update would let several slip through together).
+  const [row] = await sql<{ id: string; code_hash: string }[]>`
+    update otp_codes set attempts = attempts + 1
+     where id = (select id from otp_codes where phone = ${phone} and used_at is null and expires_at > now()
+                  order by created_at desc limit 1)
+       and attempts < ${MAX_ATTEMPTS}
+    returning id, code_hash`;
+  if (!row) return false;
   const a = Buffer.from(row.code_hash);
   const b = Buffer.from(hash(phone, code));
   const ok = a.length === b.length && timingSafeEqual(a, b);
-  if (ok) await sql`update otp_codes set used_at = now() where id = ${row.id}`;
-  else await sql`update otp_codes set attempts = attempts + 1 where id = ${row.id}`;
+  if (ok) await sql`update otp_codes set used_at = now() where id = ${row.id} and used_at is null`;
   return ok;
 }

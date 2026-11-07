@@ -6,6 +6,8 @@ import { median, sourceMetrics, type LeadFact } from "@/lib/metrics";
 import { SOURCE_LABEL, type Source } from "@/lib/services/leads";
 import { formatDuration, formatINR, istDateKey } from "@/lib/time";
 import { PageHeader, Stat } from "@/components/ui";
+import { TARGETS } from "@/lib/targets";
+import { isDemoMode } from "@/lib/demo";
 
 export const metadata = { title: "Dashboard" };
 
@@ -68,9 +70,9 @@ export default async function DashboardPage({ searchParams }: PageProps<"/staff/
       </nav>
 
       <section className="grid grid-cols-2 gap-x-6 border-y border-line lg:grid-cols-5">
-        <Stat label="Median first response" value={formatDuration(med)} hint="Target: under 5 minutes" tone={med == null ? undefined : med <= 5 * 60_000 ? "ok" : "warn"} />
-        <Stat label="Not reached in 48 h" value={pct(all?.notReached48hPct ?? null)} hint="Target: under 5%" tone={all?.notReached48hPct == null ? undefined : all.notReached48hPct < 5 ? "ok" : "bad"} />
-        <Stat label="Lead to visit" value={pct(all?.leadToVisitPct ?? null)} hint="Target: 8% (was 6%)" tone={all?.leadToVisitPct == null ? undefined : all.leadToVisitPct >= 8 ? "ok" : "warn"} />
+        <Stat label="Median first response" value={formatDuration(med)} hint={`Target: under ${TARGETS.medianFirstResponseMinutes} minutes`} tone={med == null ? undefined : med <= TARGETS.medianFirstResponseMinutes * 60_000 ? "ok" : "warn"} />
+        <Stat label="Not reached in 48 h" value={pct(all?.notReached48hPct ?? null)} hint={`Target: under ${TARGETS.notReached48hPct}%`} tone={all?.notReached48hPct == null ? undefined : all.notReached48hPct < TARGETS.notReached48hPct ? "ok" : "bad"} />
+        <Stat label="Lead to visit" value={pct(all?.leadToVisitPct ?? null)} hint={`Target: ${TARGETS.leadToVisitPct}% (was ${TARGETS.leadToVisitBaselinePct}%)`} tone={all?.leadToVisitPct == null ? undefined : all.leadToVisitPct >= TARGETS.leadToVisitPct ? "ok" : "warn"} />
         <Stat label="Show-up rate" value={pct(all?.showUpPct ?? null, 0)} hint={`${all?.visited ?? 0} came, ${all?.noShow ?? 0} didn't`} />
         <Stat label="Cost per visit" value={formatINR(all?.costPerVisit ?? null)} hint={`${formatINR(all?.spend ?? 0)} spend · ${all?.leads ?? 0} leads`} />
       </section>
@@ -112,7 +114,8 @@ export default async function DashboardPage({ searchParams }: PageProps<"/staff/
           </table>
         </div>
         <p className="mt-2 text-xs text-stone">
-          Demo data: spend is scaled down 1:20 from the brief&apos;s ₹30 lakh a month to match the sample volume. Web chat has no media spend. Leads under 48 hours old are not yet counted in &ldquo;not reached&rdquo;.
+          {isDemoMode() && <>Demo data: spend is scaled down 1:20 from the brief&apos;s ₹30 lakh a month to match the sample volume. </>}
+          Web chat has no media spend. Leads under 48 hours old are not yet counted in &ldquo;not reached&rdquo;.
         </p>
       </section>
 

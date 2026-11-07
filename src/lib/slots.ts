@@ -15,6 +15,9 @@ export type FreeSlot = SlotRow & { left: number };
 /** Buyers cannot book a slot that starts in less than this; the site team needs notice. */
 export const MIN_LEAD_MINUTES = 60;
 
+/** How long a site visit runs. New slots get this length; the calendar file uses each slot's own end time. */
+export const VISIT_MINUTES = 45;
+
 export function freeSlots(rows: SlotRow[], now: Date, minLeadMinutes = MIN_LEAD_MINUTES): FreeSlot[] {
   const cutoff = now.getTime() + minLeadMinutes * 60_000;
   return rows

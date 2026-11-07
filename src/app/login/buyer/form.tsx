@@ -2,7 +2,7 @@
 import { useActionState } from "react";
 import { requestCode, verifyCode, type OtpState } from "./actions";
 
-export function BuyerLoginForm() {
+export function BuyerLoginForm({ demo = false }: { demo?: boolean }) {
   const [askState, ask, asking] = useActionState<OtpState, FormData>(requestCode, { step: "phone" });
   const [verifyState, verify, verifying] = useActionState<OtpState, FormData>(verifyCode, { step: "code" });
   const onCode = askState.step === "code" && verifyState.step !== "phone";
@@ -20,7 +20,7 @@ export function BuyerLoginForm() {
         </div>
         {error && <p role="alert" className="text-sm text-bad">{error}</p>}
         <button className="btn btn-primary w-full" disabled={asking}>{asking ? "Sending code…" : "Send code"}</button>
-        <p className="text-xs text-stone">Demo: use 98765 58210 (Hardik Patel, has a booked visit).</p>
+        {demo && <p className="text-xs text-stone">Demo: use 98765 58210 (Hardik Patel, has a booked visit).</p>}
       </form>
     );
   }

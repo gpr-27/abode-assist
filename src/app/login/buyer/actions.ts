@@ -6,11 +6,12 @@ import { sql } from "@/lib/db";
 import { normalizeIndianMobile } from "@/lib/phone";
 import { issueOtp, verifyOtp } from "@/lib/auth/otp";
 import { createSession } from "@/lib/auth/session";
+import { isDemoMode } from "@/lib/demo";
 
 export type OtpState = { step: "phone" | "code"; phone?: string; demoCode?: string; error?: string };
 
-/** SMS is mocked. In demo mode the code is shown on screen; set DEMO_SHOW_OTP=false once a real SMS gateway is wired. */
-const showCode = () => process.env.DEMO_SHOW_OTP !== "false";
+/** SMS is mocked. The code is shown on screen only in demo mode; a real SMS gateway replaces this. */
+const showCode = () => isDemoMode();
 
 export async function requestCode(_: OtpState, form: FormData): Promise<OtpState> {
   const phone = normalizeIndianMobile(String(form.get("phone") ?? ""));
