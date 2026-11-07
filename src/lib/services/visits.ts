@@ -66,11 +66,13 @@ export async function bookVisit(p: { leadId: string; slotId: string; via: "assis
   }
 }
 
-export async function cancelVisit(visitId: string, actorId: string | null, reason: string) {
+export async function cancelVisit(visitId: string, actorId: string | null, reason: string, onlyForLeadId?: string) {
   return sql.begin(async (tx) => {
+    // When a lead is named, the visit must belong to it: a caller cannot cancel someone else's visit.
     const [v] = await tx<{ id: string; lead_id: string }[]>`
       update visits set status = 'cancelled', updated_at = now()
-       where id = ${visitId} and status = 'booked' returning id, lead_id`;
+       where id = ${visitId} and status = 'booked' and (${onlyForLeadId ?? null}::uuid is null or lead_id = ${onlyForLeadId ?? null})
+      returning id, lead_id`;
     if (!v) return false;
     await cancelVisitMessages(tx, v.id, reason);
     await tx`update leads set status = (case when assigned_to is null then 'engaged' else 'handed_off' end)::lead_status
@@ -93,7 +95,10 @@ export async function markOutcome(visitId: string, outcome: "visited" | "no_show
     if (!v) return false;
     await tx`update outbox set status = 'cancelled', status_note = 'Visit already happened'
               where visit_id = ${v.id} and status = 'scheduled'`;
-    if (outcome === "visited") await tx`update leads set status = 'visited' where id = ${v.lead_id}`;
+    // Keep the lead's status in step with its visits, including when an outcome is corrected.
+    const [anyVisited] = await tx`select 1 from visits where lead_id = ${v.lead_id} and status = 'visited' limit 1`;
+    if (anyVisited) await tx`update leads set status = 'visited' where id = ${v.lead_id} and status in ('new','engaged','handed_off','visit_booked','visited')`;
+    else await tx`update leads set status = (case when assigned_to is null then 'engaged' else 'handed_off' end)::lead_status where id = ${v.lead_id} and status = 'visited'`;
     await tx`insert into audit_log (actor_id, action, entity, entity_id, detail)
              values (${actorId}, 'outcome', 'visit', ${v.id}, ${tx.json({ outcome })})`;
     return true;

@@ -13,6 +13,7 @@ import { summarizeLead } from "@/lib/assistant/summary";
 import { mapPortalCsv, truthy } from "@/lib/csv";
 import { BOOKING_ERRORS } from "@/lib/slots";
 import { istInstant } from "@/lib/time";
+import { VISIT_MINUTES } from "@/lib/slots";
 
 export type ActionState = { ok?: string; error?: string; fieldErrors?: Record<string, string>; report?: ImportReport } | null;
 export type ImportReport = { created: number; merged: number; possible: number; rejected: { row: number; reason: string }[]; total: number };
@@ -164,6 +165,7 @@ export async function notDuplicate(leadId: string): Promise<ActionState> {
   try {
     const s = await assertRole("executive", "head");
     uuid.parse(leadId);
+    await leadForAction(s, leadId);
     await sql`update leads set duplicate_hint = null where id = ${leadId}`;
     await audit(s.userId, "not_duplicate", "lead", leadId);
     revalidatePath(`/staff/leads/${leadId}`);
@@ -173,8 +175,9 @@ export async function notDuplicate(leadId: string): Promise<ActionState> {
 
 export async function refreshSummary(leadId: string): Promise<ActionState> {
   try {
-    await assertRole("executive", "head");
+    const s = await assertRole("executive", "head");
     uuid.parse(leadId);
+    await leadForAction(s, leadId);
     const [c] = await sql<{ id: string }[]>`select id from conversations where lead_id = ${leadId} order by updated_at desc limit 1`;
     if (!c) return { error: "This lead has no chat yet, so there is nothing to summarise." };
     await summarizeLead(c.id);
@@ -252,7 +255,7 @@ export async function cancelLeadVisit(visitId: string, leadId: string): Promise<
     const s = await assertRole("executive", "head");
     uuid.parse(visitId); uuid.parse(leadId);
     await leadForAction(s, leadId);
-    const ok = await cancelVisit(visitId, s.userId, "Cancelled by staff");
+    const ok = await cancelVisit(visitId, s.userId, "Cancelled by staff", leadId);
     revalidatePath(`/staff/leads/${leadId}`);
     revalidatePath("/staff/visits");
     return ok ? { ok: "Visit cancelled. Pending reminders were stopped." } : { error: "This visit is no longer booked." };
@@ -264,6 +267,9 @@ export async function markVisit(visitId: string, outcome: "visited" | "no_show")
     const s = await assertRole("executive", "head");
     uuid.parse(visitId);
     z.enum(["visited", "no_show"]).parse(outcome);
+    const [visit] = await sql<{ lead_id: string }[]>`select lead_id from visits where id = ${visitId}`;
+    if (!visit) return { error: "This visit no longer exists." };
+    await leadForAction(s, visit.lead_id); // an executive can only record outcomes for their own leads
     const ok = await markOutcome(visitId, outcome, s.userId);
     revalidatePath("/staff/visits");
     return ok ? { ok: outcome === "visited" ? "Marked as visited." : "Marked as no show." } : { error: "Only visits that have started can be marked." };
@@ -377,7 +383,7 @@ export async function addSlots(_: ActionState, fd: FormData): Promise<ActionStat
       const starts = istInstant(d.date, h);
       if (starts.getTime() <= Date.now()) continue;
       const r = await sql`insert into visit_slots (project_id, starts_at, ends_at, capacity)
-                          values (${project.id}, ${starts}, ${new Date(starts.getTime() + 45 * 60_000)}, ${d.capacity})
+                          values (${project.id}, ${starts}, ${new Date(starts.getTime() + VISIT_MINUTES * 60_000)}, ${d.capacity})
                           on conflict (project_id, starts_at) do nothing returning id`;
       added += r.length;
     }
