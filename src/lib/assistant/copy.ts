@@ -16,6 +16,8 @@ export const COPY: Record<Lang, {
   pickProject: string;
   handoffWithName: (name: string) => string;
   handoffNoContact: string;
+  knownNumber: string;
+  stopped: string;
 }> = {
   en: {
     greeting: "Hello, and welcome. I can answer questions about our homes and book a site visit for you. Which project would you like to know about?",
@@ -32,6 +34,8 @@ export const COPY: Record<Lang, {
     pickProject: "Which project would you like to visit?",
     handoffWithName: (n) => `${n} from our sales team will contact you shortly. They can see this chat, so you won't need to repeat yourself.`,
     handoffNoContact: "Happy to connect you with our sales team. Please share your name and number so the right person can call you.",
+    knownNumber: "We already have this number on file. To protect your details, please confirm it's you with a one-time code, and then you can book or change a visit.",
+    stopped: "Done. We won't send you any more messages about this enquiry.",
   },
   hi: {
     greeting: "नमस्ते, स्वागत है। मैं हमारे घरों के बारे में सवालों के जवाब दे सकता हूँ और आपके लिए साइट विज़िट बुक कर सकता हूँ। आप किस प्रोजेक्ट के बारे में जानना चाहेंगे?",
@@ -48,6 +52,8 @@ export const COPY: Record<Lang, {
     pickProject: "आप कौन-सा प्रोजेक्ट देखना चाहेंगे?",
     handoffWithName: (n) => `हमारी सेल्स टीम से ${n} जल्द ही आपसे संपर्क करेंगे। वे यह चैट देख सकते हैं, इसलिए आपको दोबारा कुछ बताना नहीं पड़ेगा।`,
     handoffNoContact: "मैं आपको हमारी सेल्स टीम से जोड़ देता हूँ। कृपया अपना नाम और नंबर दें ताकि सही व्यक्ति आपको कॉल कर सके।",
+    knownNumber: "यह नंबर हमारे पास पहले से है। आपकी जानकारी की सुरक्षा के लिए कृपया वन-टाइम कोड से पुष्टि करें, फिर आप विज़िट बुक या बदल सकते हैं।",
+    stopped: "हो गया। हम इस पूछताछ के बारे में अब आपको कोई संदेश नहीं भेजेंगे।",
   },
   gu: {
     greeting: "નમસ્તે, સ્વાગત છે. હું અમારા ઘરો વિશેના પ્રશ્નોના જવાબ આપી શકું છું અને તમારા માટે સાઇટ વિઝિટ બુક કરી શકું છું. તમે કયા પ્રોજેક્ટ વિશે જાણવા માંગો છો?",
@@ -64,6 +70,8 @@ export const COPY: Record<Lang, {
     pickProject: "તમે કયો પ્રોજેક્ટ જોવા માંગો છો?",
     handoffWithName: (n) => `અમારી સેલ્સ ટીમમાંથી ${n} ટૂંક સમયમાં તમારો સંપર્ક કરશે. તેઓ આ ચેટ જોઈ શકે છે, તેથી તમારે ફરી કંઈ કહેવું નહીં પડે.`,
     handoffNoContact: "હું તમને અમારી સેલ્સ ટીમ સાથે જોડી આપું. કૃપા કરીને તમારું નામ અને નંબર આપો જેથી યોગ્ય વ્યક્તિ તમને કૉલ કરી શકે.",
+    knownNumber: "આ નંબર અમારી પાસે પહેલેથી છે. તમારી વિગતોની સુરક્ષા માટે કૃપા કરીને વન-ટાઇમ કોડથી ખાતરી કરો, પછી તમે વિઝિટ બુક કે બદલી શકો છો.",
+    stopped: "થઈ ગયું. અમે આ પૂછપરછ વિશે હવે તમને કોઈ સંદેશ નહીં મોકલીએ.",
   },
 };
 

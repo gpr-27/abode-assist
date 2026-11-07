@@ -9,6 +9,7 @@ import { normalizeIndianMobile } from "../phone";
 import { bookVisit, loadSlots } from "../services/visits";
 import { handoff, type HandoffReason } from "../services/handoff";
 import { upsertLead } from "../services/leads";
+import { optOut } from "../services/outbox";
 import { runChain, AllProvidersFailed } from "./providers";
 import { asksForDiscount, checkReply, detectLanguage, SAFE_REPLIES, wantsHuman, type Lang } from "./guardrails";
 import { buildInstructions, factSheetText, type FactRow, type ProjectRow } from "./prompt";
@@ -103,7 +104,7 @@ async function doHandoff(conv: ConvRow, lang: Lang, reason: HandoffReason, note?
 
 /** Book from a button tap or a tool call. Returns the assistant line and cards. */
 async function bookFor(conv: ConvRow, lang: Lang, slotId: string, projects: ProjectRow[], partySize?: number): Promise<{ text: string; cards: Card[]; booked: boolean }> {
-  const [slot] = await sql<{ id: string; project_id: string; starts_at: Date }[]>`select id, project_id, starts_at from visit_slots where id = ${slotId}`;
+  const [slot] = await sql<{ id: string; project_id: string; starts_at: Date; ends_at: Date }[]>`select id, project_id, starts_at, ends_at from visit_slots where id = ${slotId}`;
   const project = slot ? projects.find((p) => p.id === slot.project_id) : undefined;
   if (!slot || !project) return { text: BOOKING_ERRORS.SLOT_NOT_FOUND, cards: [], booked: false };
   const when = formatDateTime(slot.starts_at, LOCALE[lang]);
@@ -124,7 +125,7 @@ async function bookFor(conv: ConvRow, lang: Lang, slotId: string, projects: Proj
   await sql`update conversations set pending_slot_id = null where id = ${conv.id}`;
   if (res.alreadyBooked) return { text: COPY[lang].alreadyBooked(when), cards: [], booked: false };
   const card: Card = {
-    type: "booking", visitId: res.visitId, projectName: project.name, startsAt: new Date(res.startsAt).toISOString(),
+    type: "booking", visitId: res.visitId, projectName: project.name, startsAt: new Date(res.startsAt).toISOString(), endsAt: new Date(slot.ends_at).toISOString(),
     address: project.address, mapUrl: project.map_url, reraNo: project.rera_no,
     rescheduledFrom: res.rescheduledFrom ? new Date(res.rescheduledFrom).toISOString() : null,
   };
@@ -132,7 +133,7 @@ async function bookFor(conv: ConvRow, lang: Lang, slotId: string, projects: Proj
 }
 
 /** Button taps: deterministic, no language model involved. */
-export async function handleAction(conv: ConvRow, action: ChatAction, lang: Lang): Promise<ChatMessage[]> {
+export async function handleAction(conv: ConvRow, action: ChatAction, lang: Lang, verifiedPhone: string | null = null): Promise<ChatMessage[]> {
   const { projects } = await context(conv);
   const out: ChatMessage[] = [];
 
@@ -174,7 +175,12 @@ export async function handleAction(conv: ConvRow, action: ChatAction, lang: Lang
       return [await save(conv.id, "assistant", COPY[lang].consentRequired, [{ type: "contact_form", reason: "retry" }], { action: "contact" })];
     }
     const lead = await sql.begin(async (tx) => {
-      const r = await upsertLead(tx, { name: action.name, phone, email: action.email || null, projectId: conv.project_id, language: lang, source: "chat", consent: true, note: "Shared details in web chat" });
+      const r = await upsertLead(
+        tx,
+        { name: action.name, phone, email: action.email || null, projectId: conv.project_id, language: lang, source: "chat", consent: true, note: "Shared details in web chat" },
+        { trusted: false, ownLeadId: conv.lead_id, verifiedPhone },
+      );
+      if (r.unverified) return r; // someone else's number: touch recorded, nothing linked or changed
       if (r.verdict !== "same") await tx`update leads set created_at = ${conv.created_at}, status = 'engaged' where id = ${r.leadId}`;
       // The chat answered the buyer the moment they wrote; that is the first response.
       await tx`update leads set first_response_at = coalesce(first_response_at,
@@ -183,12 +189,23 @@ export async function handleAction(conv: ConvRow, action: ChatAction, lang: Lang
       await tx`update conversations set lead_id = ${r.leadId} where id = ${conv.id}`;
       return r;
     });
+
+    if (lead.unverified) {
+      out.push(await save(conv.id, "buyer", `${action.name.trim()} · ${phone.replace(/^\+91(\d{5})(\d{5})$/, "+91 $1 $2")}`, [], { action: "contact", consent: true }));
+      out.push(await save(conv.id, "assistant", COPY[lang].knownNumber, [{ type: "signin", reason: "known_number" }], { action: "contact", guard: ["unverified_known_number"] }));
+      return out;
+    }
+
     conv.lead_id = lead.leadId;
     out.push(await save(conv.id, "buyer", `${action.name.trim()} · ${phone.replace(/^\+91(\d{5})(\d{5})$/, "+91 $1 $2")}`, [], { action: "contact", consent: true }));
     if (conv.pending_slot_id) {
       const r = await bookFor(conv, lang, conv.pending_slot_id, projects);
       if (r.booked) {
         const h = await doHandoff(conv, lang, "serious_buyer", "Booked a site visit");
+        if (h.card?.type === "handoff") r.cards.push(h.card);
+      } else if (conv.handoff_at) {
+        // The buyer had also asked for a person: that still has to happen when the slot could not be booked.
+        const h = await doHandoff(conv, lang, "buyer_request");
         if (h.card?.type === "handoff") r.cards.push(h.card);
       }
       out.push(await save(conv.id, "assistant", `${COPY[lang].contactSaved} ${r.text}`, r.cards, { action: "contact" }));
@@ -220,6 +237,16 @@ export async function handleText(conv: ConvRow, text: string, uiLang: Lang): Pro
   if (lang !== conv.language) await sql`update conversations set language = ${lang} where id = ${conv.id}`;
   const out: ChatMessage[] = [await save(conv.id, "buyer", text)];
   const ctx = await context(conv);
+
+  // 0. "STOP": honoured at once, in any language of the interface, before anything else.
+  if (/^\s*(stop|unsubscribe|opt[\s-]?out|stop messages)\s*[.!]?\s*$/i.test(text)) {
+    if (conv.lead_id) {
+      const [l] = await sql<{ optout_token: string }[]>`select optout_token from leads where id = ${conv.lead_id}`;
+      if (l) await optOut(l.optout_token);
+    }
+    out.push(await save(conv.id, "assistant", COPY[lang].stopped, [], { guard: ["stop_request"] }));
+    return out;
+  }
 
   // 1. A person, any time — no model call needed.
   if (wantsHuman(text)) {

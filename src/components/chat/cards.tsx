@@ -20,6 +20,7 @@ export function CardView(p: P) {
     case "contact_form": return p.live ? <ContactForm {...p} card={p.card} /> : null;
     case "booking": return <Booking {...p} card={p.card} />;
     case "handoff": return <Handoff {...p} card={p.card} />;
+    case "signin": return <SignIn {...p} />;
     case "projects": return <Projects {...p} card={p.card} />;
   }
 }
@@ -113,7 +114,7 @@ function ContactForm({ card, lang, busy, onAction }: P & { card: Extract<Card, {
 function ics(card: Extract<Card, { type: "booking" }>) {
   const stamp = (d: Date) => d.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
   const start = new Date(card.startsAt);
-  const end = new Date(start.getTime() + 45 * 60_000);
+  const end = new Date(card.endsAt);
   const body = [
     "BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Abode Assist//Site visit//EN", "BEGIN:VEVENT",
     `UID:${card.visitId}@abode-assist`, `DTSTAMP:${stamp(new Date())}`, `DTSTART:${stamp(start)}`, `DTEND:${stamp(end)}`,
@@ -166,4 +167,9 @@ function Projects({ card, lang, busy, onAction }: P & { card: Extract<Card, { ty
       ))}
     </div>
   );
+}
+
+function SignIn({ lang }: P) {
+  const label = { en: "Confirm with a one-time code", hi: "वन-टाइम कोड से पुष्टि करें", gu: "વન-ટાઇમ કોડથી ખાતરી કરો" }[lang];
+  return <a href="/login/buyer" className="btn btn-primary btn-sm">{label}</a>;
 }

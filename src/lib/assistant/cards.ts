@@ -4,8 +4,9 @@ export type SlotChip = { id: string; startsAt: string; left: number };
 export type Card =
   | { type: "slots"; projectSlug: string; projectName: string; slots: SlotChip[]; note?: string }
   | { type: "contact_form"; reason: string; pendingSlot?: string | null }
-  | { type: "booking"; visitId: string; projectName: string; startsAt: string; address: string; mapUrl: string; reraNo: string; rescheduledFrom?: string | null }
+  | { type: "booking"; visitId: string; projectName: string; startsAt: string; endsAt: string; address: string; mapUrl: string; reraNo: string; rescheduledFrom?: string | null }
   | { type: "handoff"; executiveName: string | null }
+  | { type: "signin"; reason: "known_number" }
   | { type: "projects"; projects: { slug: string; name: string; locality: string }[] };
 
 export type ChatMessage = {

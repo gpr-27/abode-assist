@@ -7,6 +7,7 @@ import { asLang } from "@/lib/i18n";
 import { getOrCreateConversation, greeting, handleAction, handleText, loadHistory } from "@/lib/assistant/agent";
 import { getProjects } from "@/lib/queries";
 import { dispatchDue } from "@/lib/services/outbox";
+import { getSession } from "@/lib/auth/session";
 
 export const maxDuration = 60;
 
@@ -63,6 +64,8 @@ const Body = z.object({
 }).refine((b) => !!b.text !== !!b.action, { message: "Send either text or an action." });
 
 const RATE_PER_MINUTE = 12;
+// A global ceiling, so a client that drops its cookie to dodge the per-visitor limit cannot run up the AI bill.
+const GLOBAL_PER_MINUTE = 90;
 
 export async function POST(req: Request) {
   let body: z.infer<typeof Body>;
@@ -80,9 +83,15 @@ export async function POST(req: Request) {
   const [{ n }] = await sql<{ n: number }[]>`
     select count(*)::int as n from messages where conversation_id = ${conv.id} and role = 'buyer' and created_at > now() - interval '1 minute'`;
   if (n >= RATE_PER_MINUTE) return Response.json({ error: "You're sending messages quickly. Please wait a moment." }, { status: 429 });
+  const [{ total }] = await sql<{ total: number }[]>`select count(*)::int as total from messages where role = 'buyer' and created_at > now() - interval '1 minute'`;
+  if (total >= GLOBAL_PER_MINUTE) return Response.json({ error: "We're very busy right now. Please try again in a minute, or call the site office." }, { status: 429 });
+
+  // A buyer who has signed in with a one-time code has proved they own that number.
+  const session = await getSession();
+  const verifiedPhone = session?.role === "buyer" ? (await sql<{ phone: string | null }[]>`select phone from users where id = ${session.userId}`)[0]?.phone ?? null : null;
 
   try {
-    const messages = body.action ? await handleAction(conv, body.action, body.lang) : await handleText(conv, body.text!, body.lang);
+    const messages = body.action ? await handleAction(conv, body.action, body.lang, verifiedPhone) : await handleText(conv, body.text!, body.lang);
     // Free plans only allow a daily cron, so any activity also sends reminders that have come due.
     after(() => dispatchDue().catch((e) => console.error("dispatch failed", e?.message)));
     return Response.json({ messages });

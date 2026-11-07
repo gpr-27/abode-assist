@@ -34,7 +34,13 @@ export type LeadInput = {
   buyerUserId?: string | null;
 };
 
-export type UpsertResult = { leadId: string; code: string; verdict: DedupeVerdict["kind"]; matchedOn?: string; acked: boolean };
+export type UpsertResult = { leadId: string; code: string; verdict: DedupeVerdict["kind"]; matchedOn?: string; acked: boolean; unverified?: boolean };
+
+/**
+ * Who is asking. Staff, CSV imports and portal feeds are trusted (the default). An anonymous web visitor is not:
+ * typing a phone number proves nothing, so it must never reach another person's lead or consent.
+ */
+export type Trust = { trusted: true } | { trusted: false; ownLeadId: string | null; verifiedPhone: string | null };
 
 export class LeadInputError extends Error {}
 
@@ -44,7 +50,7 @@ export class LeadInputError extends Error {}
  * - similar name, different contact → a new lead flagged as a possible duplicate for a person to merge
  * - otherwise a new lead; if the buyer consented, the opt-in acknowledgement goes out at once.
  */
-export async function upsertLead(tx: Tx, input: LeadInput): Promise<UpsertResult> {
+export async function upsertLead(tx: Tx, input: LeadInput, trust: Trust = { trusted: true }): Promise<UpsertResult> {
   const phone = normalizeIndianMobile(input.phone);
   const email = normalizeEmail(input.email);
   const name = input.name.trim().replace(/\s+/g, " ").slice(0, 120);
@@ -64,6 +70,14 @@ export async function upsertLead(tx: Tx, input: LeadInput): Promise<UpsertResult
   const verdict = classifyDuplicate({ name, phone, email }, [...exact, ...fuzzy]);
 
   if (verdict.kind === "same") {
+    const mayUpdate = trust.trusted || verdict.leadId === trust.ownLeadId || (!!phone && phone === trust.verifiedPhone);
+    if (!mayUpdate) {
+      // An unverified visitor entered details that match an existing person. Record the touch (the lead did
+      // enquire again), but change nothing on the lead: no consent, no data, and no link to this visitor.
+      const [existing] = await tx<{ id: string; code: string }[]>`select id, code from leads where id = ${verdict.leadId}`;
+      await tx`insert into lead_touches (lead_id, source, note) values (${existing.id}, ${input.source}, 'Repeat enquiry from the web chat (not verified)')`;
+      return { leadId: existing.id, code: existing.code, verdict: "same", matchedOn: verdict.matchedOn, acked: false, unverified: true };
+    }
     const [l] = await tx<{ id: string; code: string }[]>`
       update leads set
         phone = coalesce(phone, ${phone}),
