@@ -66,7 +66,7 @@ pnpm dev             # http://localhost:3000
 Other commands:
 
 ```bash
-pnpm test            # 146 tests (unit + DB race tests; DB tests skip if DATABASE_URL is unset)
+pnpm test            # 223 tests (unit + DB tests incl. race tests; DB tests skip if DATABASE_URL is unset)
 pnpm typecheck
 pnpm lint
 pnpm db:reset && pnpm db:seed   # wipe and re-seed (dates are relative to today)

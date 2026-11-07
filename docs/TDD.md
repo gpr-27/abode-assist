@@ -51,7 +51,7 @@ Company A spends about ₹30 lakh a month on ads and portals, for about 3,000 le
 | **AI SDK 7 with a 5-step provider chain** | One tool-calling interface across Anthropic, Groq and Gemini, so the agent keeps working when a provider is down or out of quota (section 5.4) | A single provider: one outage would take the assistant down |
 | **Vercel, with functions pinned to Mumbai (`bom1`)** | Zero-config Next.js hosting, preview deployments per push, and cron. Running functions next to the database avoids an ocean round-trip on every query. | |
 
-**Connection pooling note (found by the test suite):** I first used postgres.js. It pipelines queries on a connection, and through Supabase's *transaction* pooler (port 6543), 20 parallel queries hung every time, even on one connection. The *session* pooler avoided the hang but caps the project at 15 clients, which two dev servers and a test run exhausted. So the app now uses **node-postgres** (one query at a time per connection) through the transaction pooler, behind a small tagged-template helper (`src/lib/db.ts`): parameters are always bound (`$1…`), and it supports `sql.begin`, `sql.json` and `IN`-lists. All 146 tests, including the concurrent-booking races, pass on that same connection path.
+**Connection pooling note (found by the test suite):** I first used postgres.js. It pipelines queries on a connection, and through Supabase's *transaction* pooler (port 6543), 20 parallel queries hung every time, even on one connection. The *session* pooler avoided the hang but caps the project at 15 clients, which two dev servers and a test run exhausted. So the app now uses **node-postgres** (one query at a time per connection) through the transaction pooler, behind a small tagged-template helper (`src/lib/db.ts`): parameters are always bound (`$1…`), and it supports `sql.begin`, `sql.json` and `IN`-lists. All 223 tests, including the concurrent-booking races, pass on that same connection path.
 
 ---
 
@@ -100,7 +100,7 @@ Design decisions in the model:
 1. The buyer opens the site on a phone and taps **Book a site visit** (or a time on a project page, or types in the chat). Any language works: English, Hindi or Gujarati.
 2. The assistant answers from the fact sheet and, when the buyer wants to visit, calls `get_free_slots`. The chat shows real open slots as buttons, grouped by day, with morning, afternoon and evening filters.
 3. When the buyer taps a time, the slot is held as `pending_slot_id` and a **contact form** appears: name, mobile and an unticked consent checkbox. Phone numbers are never collected as free chat text.
-4. On submit, `upsertLead` runs the duplicate checks, records consent and links the chat. Then `bookVisit` runs in one transaction (section 6).
+4. On submit, `upsertLead` runs the duplicate checks, records consent and links the chat. Then `bookVisit` runs in one transaction (section 6). If the number already belongs to a lead, an anonymous visitor is **not** attached to it: the assistant asks them to confirm with a one-time code first (section 8).
 5. The buyer sees a confirmation card with date, address, map pin, an add-to-calendar file and the RERA number. The outbox records:
    - a confirmation, sent now;
    - a reminder 24 hours before the visit;
@@ -154,7 +154,8 @@ The **Visits** page is the site-office check-in: mark each visitor Visited or No
 ```
 buyer text
   │
-  ├─ 1. Wants a person?  (regex in EN / Hinglish / हिंदी / ગુજરાતી) ──► hand off now, no model call
+  ├─ 0. Typed STOP? ───────────────────────────────────────────────► opt out at once
+  ├─ 1. Wants a person?  (stems and word order in EN / Hinglish / हिंदी / ગુજરાતી) ──► hand off now, no model call
   ├─ 2. Asks for a discount / negotiation? ──────────────────────────► fixed reply + hand off + flag
   │
   ├─ 3. Agent (provider chain, ≤6 steps) with tools:
@@ -168,7 +169,9 @@ buyer text
   ├─ 4. Guard the draft before the buyer sees it (checkReply):
   │       • discount / offer / "final price" talk          → blocked
   │       • claims beyond registered details (returns, appreciation, "no. 1 developer") → blocked
-  │       • any ₹ / lakh / crore figure NOT in the fact sheet → blocked
+  │       • any ₹ / lakh / lac / crore figure (digits or words, "eighty lakh") or bare 6–9 digit sum NOT in the fact sheet → blocked
+  │       • any area, %, distance, floor, tower, home or month count NOT in the fact sheet → blocked
+  │       • "final price" only passes when the sentence says the sales team confirms it
   │     blocked → safe reply in the buyer's language + hand off + flag for daily review (draft kept)
   │
   └─ 5. Save reply with cards and meta (provider, model, tools used, guard hits)
@@ -188,6 +191,7 @@ The model can't make up a time. It only sees slot IDs returned by `get_free_slot
 | Quotes a final price or discount | The discount intent is caught before the model runs. The output guard blocks discount and final-price language and any price not in the fact sheet. Only the indicative range written by the sales head can be repeated. |
 | RERA: claims beyond registered details | Promotional messages carry the project's RERA number. The claim guard blocks returns, appreciation and superlatives. |
 | Buyer wants a human | Detected in 3 languages before the model runs, plus a "Talk to a person" button that's always visible. |
+| Invented sizes or distances | Every number with a unit (sq ft, %, km, floors, towers, homes, months) in a reply must also appear in the fact sheet, so the assistant cannot make up a carpet area or a school distance. |
 | Model or provider down | 5-step fallback chain (section 5.4). If every step fails, the chat says so plainly, still shows real slots and a "Talk to a person" button, and flags the chat with `assistant_unavailable`. |
 | Repeated side effects on fallback | If a tool with side effects (a booking) has already run, the chain does **not** retry on the next provider, so a visit is never double-booked by a retry. Booking is also idempotent (re-booking the same slot is a no-op). |
 | Bad summary | Summaries are labelled "AI summary — check before relying on it", record which model wrote them, are validated with zod, and fall back to a rule-based summary that only repeats what the buyer said. |
@@ -241,6 +245,7 @@ The brief asks for "calm and premium, in keeping with the price of the homes", m
   - green, amber and red appear only to mean state (response timers, statuses), never as decoration.
 - **Type:** *Spectral* Light for display, which feels editorial and residential without the usual luxury-serif clichés. *Hanken Grotesk* for UI text. *Mukta* (Devanagari) and *Hind Vadodara* (Gujarati, made by an Ahmedabad type foundry) are in the font stack so Hindi and Gujarati look native, not fallback.
 - **One memorable element:** a thin-line **jaali** lattice inside an arch, after the stone screens of old Ahmedabad. It appears on the landing and project pages only. Everything else stays quiet.
+- **Message formatting:** the assistant is asked for one short answer line, a list with one fact per line ("Label: value") and at most one question on its own line. The page renders that as real lists with bold labels (`FormattedText`, which builds React elements and never HTML, so typed markup stays text). WhatsApp-style messages are laid out as the message, labelled address and map rows, and a quiet legal footer (`MessageBody`). The RERA number sits in the chat header instead of being repeated in every reply.
 - **Chat:** the assistant's text sits on the page without a bubble, like a concierge's note, and the buyer's messages sit in indigo bubbles. Slot choices are big tap targets grouped by day (thumb-friendly on phones). The "Talk to a person" button is in the header on desktop and under the composer on mobile, so it's always one tap away. The consent checkbox is unticked by default, and the copy says exactly what the buyer agrees to.
 - **Staff portal:** one layout pattern on every screen (title, filters, table), short menus, tables that stack into rows on a phone, and status as small tinted badges. The response timer is the most important number on the lead list, so it's the only coloured element in each row.
 - **States:** every page has loading skeletons, empty states that tell you what to do next ("No upcoming visit: Book a site visit"), and error states that say what failed and offer a retry. If the chat API is unreachable, the chat shows an offline card with "Try again"; if the AI is down, the chat says so and still offers slots.
@@ -274,10 +279,11 @@ The brief asks for "calm and premium, in keeping with the price of the homes", m
 ## 8. Security and privacy
 
 - **No secrets in the repo.** `.env*` is git-ignored, `.env.example` lists names only, and production values live in Vercel environment variables. Every commit was scanned for key patterns before pushing.
-- **Input validation.** zod validates every API body and server action. Phone numbers are normalised and checked (Indian mobile, 6–9 prefix). Chat text is limited to 1,000 characters, and buyers are rate-limited to 12 messages per minute per conversation.
-- **Access control.** Every server action calls `assertRole()`, and staff pages call `requireRole()`. Executives can act only on leads assigned to them or unassigned. Merge, reassign, fact-sheet and slot editing are head-only. Buyers can act only on visits linked to their account, checked in SQL. The session is re-validated against `users.active` on every request.
-- **Passwords and OTP.** bcrypt (cost 10). The OTP is 6 digits, valid for 5 minutes, stored only as a salted hash, compared in constant time, with 5 attempts per code and 5 codes per hour. In demo mode the code is shown on screen because SMS is simulated; production sets `DEMO_SHOW_OTP=false`.
-- **DPDP Act 2023.** Explicit consent checkbox; contact only with consent; one-click opt-out on every message (`/optout/<token>`, a confirmation step so link prefetching can't opt someone out) and on My visits; opt-out cancels every scheduled message and is re-checked at send time; phones masked in list views; personal data redacted before free-tier LLM calls.
+- **Identity in the chat.** Typing a phone number into the chat form proves nothing. If it matches an existing lead, the visitor is *not* attached to it, no consent is recorded for that person, and none of the lead's data reaches the assistant's prompt; only a touch is logged and the visitor is asked to confirm with a one-time code. The chat links to an existing lead only if it is the lead this chat itself created, or the buyer has signed in with a code for that number. Staff actions, CSV imports and portal feeds stay trusted.
+- **Input validation.** zod validates every API body and server action. Phone numbers are normalised and checked (Indian mobile, 6–9 prefix). Chat text is limited to 1,000 characters, and buyers are rate-limited to 12 messages per minute per conversation, with a global ceiling of 90 per minute so a client that discards its cookie cannot run up the AI bill.
+- **Access control.** Every server action calls `assertRole()`, and staff pages call `requireRole()`. Executives can act only on leads assigned to them or unassigned, including recording a visit outcome, cancelling a visit (the visit must belong to the named lead) and refreshing a summary. Merge, reassign, fact-sheet and slot editing are head-only. Buyers can act only on visits linked to their account, checked in SQL. The session is re-validated against `users.active` on every request.
+- **Passwords and OTP.** bcrypt (cost 10). The OTP is 6 digits, valid for 5 minutes, stored only as a salted hash, compared in constant time, with 5 attempts per code (counted by one atomic statement, so parallel guesses cannot exceed it) and 5 codes per hour. SMS is simulated, so the code is shown on screen **only when `DEMO_MODE=true`**; the same switch controls the demo staff logins on the sign-in page. A real deployment leaves it off and rotates the seeded passwords.
+- **DPDP Act 2023.** Explicit consent checkbox; contact only with consent; opt-out on every message (`/optout/<token>`, or typing STOP in the chat, a confirmation step so link prefetching can't opt someone out) and on My visits; opt-out cancels every scheduled message and is re-checked at send time; phones masked in list views; personal data redacted before free-tier LLM calls.
 - **RERA.** Every promotional message and project page shows the project's registration number, and the guardrails block claims beyond the registered details.
 - **Headers.** `X-Frame-Options: DENY`, `nosniff`, a strict referrer policy and a permissions policy. The `X-Powered-By` header is off. Staff, chat and account routes are excluded from search in `robots.txt`.
 - **Audit log.** Bookings, reschedules, cancellations, outcomes, assignments, merges and opt-outs.
@@ -296,7 +302,7 @@ The brief asks for "calm and premium, in keeping with the price of the homes", m
 | A6 | Ad spend is split portal 47%, social 33%, hoarding 10%, website 10%, and the demo is **scaled 1:20** (₹1.5 lakh/month for ~180 leads, ~₹1,000 per lead, matching the brief's ₹1,000 per lead). | The brief gives only the ₹30 lakh total. |
 | A7 | Leads from hoarding calls and some portal leads arrive without WhatsApp consent, so a person must call them; the system cannot message them. | DPDP and WhatsApp opt-in rules. |
 | A8 | The automatic opt-in acknowledgement counts as the first response for consented leads. | The brief asks for every enquiry to be *answered* within 2 minutes; the acknowledgement is a real, useful answer with a link to chat and book. |
-| A9 | WhatsApp, SMS and portal APIs are mocked: an outbox table plus CSV import. The cron dispatcher runs daily on Vercel Hobby, and also runs whenever staff open the leads, visits or messages pages. | The brief says to mock messages and outside systems. A paid plan or a queue would run it every minute. |
+| A9 | WhatsApp, SMS and portal APIs are mocked: an outbox table plus CSV import. A scheduled GitHub Actions job calls the reminder endpoint every 5 minutes (Vercel's free plan only allows a daily cron); the endpoint also runs on any chat message and whenever staff open the leads, visits or messages pages. Messages are written in the buyer's language. | The brief says to mock messages and outside systems. A queue would make reminders exact to the minute. |
 | A10 | Sample leads LD-58210, LD-58211 and LD-58224 are seeded exactly as given. LD-58210's visit (1 Nov, 11:00) is in the past and still "booked", so it shows as *awaiting outcome* on the Visits page. | Keeps the sample data verbatim and shows the check-in flow. |
 | A11 | The fact sheet is in English. The assistant answers in the buyer's language from it; buyer UI copy is fully translated. | One source of truth for the sales head. |
 | A12 | All people, phone numbers and e-mails in the seed are synthetic. | No real personal data in the repository. |
@@ -306,22 +312,35 @@ The brief asks for "calm and premium, in keeping with the price of the homes", m
 
 ## 10. Testing
 
-`pnpm test` runs 146 tests with Vitest, against a real Postgres database:
+`pnpm test` runs 223 tests with Vitest, against a real Postgres database (207 unit, 16 database):
 
-- **Unit tests (137):**
+- **Unit tests:**
   - phone normalisation;
   - slot availability and suggestions in IST;
-  - reminder planning (offsets, skipped windows, opt-out);
-  - guardrails in 3 languages, money extraction and fact-sheet checking;
+  - reminder planning (offsets, skipped windows, opt-out) and the English, Hindi and Gujarati templates;
+  - guardrails in 3 languages: the discount, claim and handoff phrasings, money in digits and words, and the measured-figure check, with a table of replies that must be blocked and replies that must pass;
   - duplicate classification and name similarity;
   - assignment fairness;
   - CSV parsing with portal header aliases;
   - dashboard maths (median, the 48-hour judgement only on leads old enough, show-up rate, cost per visit);
   - summary parsing and rule fallback;
   - personal-data redaction;
+  - the chat text formatter;
   - time helpers.
-- **Database tests (9):** the double-booking races and trigger bypass in section 6; consent, opt-out, inactive and too-soon refusals; outbox rows created with RERA text and cancelled on cancel; lead dedupe merge versus flag. They run on an isolated fixture project and clean up after themselves.
+- **Database tests:**
+  - the double-booking races and trigger bypass in section 6;
+  - consent, opt-out, inactive and too-soon refusals;
+  - outbox rows created with RERA text and cancelled on cancel;
+  - lead dedupe merge versus flag;
+  - an anonymous visitor cannot attach to, or give consent for, an existing lead;
+  - a visit can only be cancelled through its own lead;
+  - correcting a visit outcome keeps the lead status in step;
+  - messages are in the buyer's language with the RERA number and a stop link;
+  - a reminder that comes due after the visit started is skipped.
+  They run on an isolated fixture project and clean up after themselves.
 - **Manual end-to-end checks** in a real browser at 390 px and desktop: the buyer journey in English, Hindi and Gujarati, OTP sign-in, My visits, opt-out, and every staff screen. Each LLM step was checked live with `pnpm llm:check`.
+
+An independent read-only review of the code against the brief found, and the fixes above close: the chat identity gap, missing ownership checks on three staff actions, regex guardrails that could be bypassed, and reminders that could be sent late.
 
 The test pass found real bugs, which are now fixed: a missing enum cast in cancellation; the transaction-pooler hang; "no 1 BHK" wrongly blocked as a superlative; "connect me with sales" not triggering a handoff; and a "92L" shorthand price escaping the price check.
 
@@ -347,7 +366,9 @@ The test pass found real bugs, which are now fixed: a missing enum cast in cance
 7. **Portal webhooks** instead of CSV, with source-level spend imported automatically.
 
 **Known limits, honestly:**
-- The regex pre-checks are tuned for common phrasings. Unusual ones fall through to the model and the output guard, so the second layer still catches money and discount talk.
+- The phrase checks for discounts, claims and "talk to a person" cover the common ways people say them in three languages. Unusual wording falls through to the model, and the output guard (money, claims, measured figures) is the second layer. A model that answers a *non-numeric* fact from its own knowledge ("is there a swimming pool?") is only held back by the prompt; a second "is every claim in the fact sheet" check is the next step.
 - `\bhuman\b` over-triggers a handoff (for example "human resources"), which errs on the safe side.
-- In demo mode, anyone can sign in as any buyer phone, because the OTP is shown on screen. Production turns that off.
-- Reminders are only as punctual as the dispatcher schedule (see A9).
+- Demo mode (`DEMO_MODE=true`) shows the one-time code and the demo staff logins publicly, so anyone can sign in as a buyer or as staff. That is deliberate for the reviewer; a real deployment leaves it off and rotates the seeded passwords.
+- "First response" counts the automatic acknowledgement and the assistant's first reply, as the brief asks ("answered within two minutes"). A separate "first human contact" metric would be a useful addition.
+- The GitHub Actions reminder job is only as punctual as GitHub's scheduler (usually within a few minutes) and needs the two secrets set; a queue would make it exact.
+- Opening `/chat?slot=<id>` from a project page books that slot for a buyer who already has a consented lead. It is the same tap as choosing the time on the page, but a crafted link could do it too.

@@ -11,7 +11,7 @@ AI lead-response and site-visit booking assistant for a residential developer in
 ```bash
 pnpm install && cp .env.example .env.local   # fill in values
 pnpm db:migrate && pnpm db:seed && pnpm dev
-pnpm test                                     # 146 tests, including DB race tests for double booking
+pnpm test                                     # 223 tests, including DB race tests for double booking
 ```
 
 Stack: Next.js 16 (App Router) · PostgreSQL on Supabase · AI SDK 7 with a 5-step provider chain (Claude Sonnet → Groq ×2 → Gemini ×2) · Vercel.
