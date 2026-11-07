@@ -9,6 +9,7 @@ import { maskPhone } from "@/lib/phone";
 import { formatDateTime } from "@/lib/time";
 import { Badge, Empty, PageHeader } from "@/components/ui";
 import { SendDueButton } from "@/components/staff/send-due";
+import { MessageBody } from "@/components/message-body";
 
 export const metadata = { title: "Messages" };
 
@@ -68,7 +69,7 @@ export default async function MessagesPage({ searchParams }: PageProps<"/staff/m
                 <p className="text-xs text-stone">{o.status === "sent" && o.sent_at ? `Sent ${formatDateTime(o.sent_at)}` : `${o.status === "scheduled" ? "Due" : "Was due"} ${formatDateTime(o.send_at)}`}</p>
                 {o.status_note && <p className="text-xs text-warn">{o.status_note}</p>}
               </div>
-              <p className="whitespace-pre-wrap [overflow-wrap:anywhere] rounded-xl bg-paper-2 px-4 py-3 text-sm">{o.body}</p>
+              <MessageBody body={o.body} className="rounded-xl bg-paper-2 px-4 py-3" />
             </li>
           ))}
         </ul>

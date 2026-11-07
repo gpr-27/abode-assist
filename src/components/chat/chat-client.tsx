@@ -7,6 +7,7 @@ import { T } from "@/lib/i18n";
 import type { Lang } from "@/lib/assistant/guardrails";
 import type { ChatAction, ChatMessage } from "@/lib/assistant/cards";
 import { CardView } from "./cards";
+import { FormattedText } from "../formatted-text";
 
 type Props = {
   initialLang: Lang;
@@ -126,6 +127,7 @@ export function ChatClient({ initialLang, project, slotId, intent }: Props) {
           <div className="min-w-0">
             <Link href={project ? `/projects/${project.slug}` : "/"} className="text-sm text-stone hover:text-ink" aria-label={t.brand}>←<span className="hidden sm:inline"> {t.brand}</span></Link>
             <p className="display truncate text-lg leading-tight">{project ? `${project.name}, ${project.locality}` : t.chatTitle}</p>
+            {project && <p className="truncate text-xs text-stone">{t.rera} {project.rera}</p>}
           </div>
           <div className="flex shrink-0 items-center gap-2">
             <LangSwitch current={lang} onChange={setLang} />
@@ -191,14 +193,13 @@ function Bubble({ m, lang, busy, live, onAction }: { m: ChatMessage; lang: Lang;
   return (
     <div className={clsx("rise flex flex-col gap-2", mine ? "items-end" : "items-start")}>
       {m.role === "executive" && <p className="text-xs text-indigo">{m.authorName ?? "Sales team"}</p>}
-      {m.content && (
-        <div className={clsx(
-          "max-w-[85%] whitespace-pre-wrap leading-relaxed",
-          mine ? "rounded-2xl rounded-br-md bg-indigo px-4 py-2.5 text-white" : m.role === "executive" ? "rounded-2xl rounded-bl-md border border-indigo/30 bg-indigo-soft px-4 py-2.5" : "text-[1.02rem]",
-        )}>
-          {m.content}
-        </div>
-      )}
+      {m.content && (mine ? (
+        <div className="max-w-[85%] whitespace-pre-wrap rounded-2xl rounded-br-md bg-indigo px-4 py-2.5 leading-relaxed text-white [overflow-wrap:anywhere]">{m.content}</div>
+      ) : m.role === "executive" ? (
+        <FormattedText text={m.content} className="max-w-[85%] rounded-2xl rounded-bl-md border border-indigo/30 bg-indigo-soft px-4 py-3 leading-relaxed" />
+      ) : (
+        <FormattedText text={m.content} className="max-w-[36rem] text-[1.02rem] leading-[1.65]" />
+      ))}
       {m.cards.map((c, i) => <CardView key={i} card={c} lang={lang} busy={busy} live={live} onAction={onAction} />)}
     </div>
   );

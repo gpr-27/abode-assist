@@ -5,6 +5,7 @@ import { sql } from "@/lib/db";
 import { formatDateTime } from "@/lib/time";
 import { formatPhone } from "@/lib/phone";
 import { Badge, Empty } from "@/components/ui";
+import { MessageBody } from "@/components/message-body";
 import { cancelMyVisit, setMessages, signOut } from "./actions";
 import { BRAND } from "@/lib/brand";
 
@@ -88,7 +89,7 @@ export default async function MyVisits() {
             {messages.map((m) => (
               <li key={m.id} className="rounded-2xl bg-white border border-line p-4 text-sm">
                 <p className="text-xs text-stone">{m.status === "scheduled" ? `Scheduled for ${formatDateTime(m.send_at)}` : formatDateTime(m.send_at)} · WhatsApp</p>
-                <p className="mt-2 whitespace-pre-wrap [overflow-wrap:anywhere]">{m.body}</p>
+                <MessageBody body={m.body} className="mt-3" />
               </li>
             ))}
           </ul>

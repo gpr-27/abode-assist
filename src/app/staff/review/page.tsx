@@ -7,6 +7,7 @@ import { HANDOFF_LABEL, type HandoffReason } from "@/lib/services/handoff";
 import { formatDateTime, formatTime } from "@/lib/time";
 import { Badge, Empty, PageHeader } from "@/components/ui";
 import { ReviewForm } from "@/components/staff/review-form";
+import { FormattedText } from "@/components/formatted-text";
 
 export const metadata = { title: "Review" };
 
@@ -69,7 +70,7 @@ export default async function ReviewPage({ searchParams }: PageProps<"/staff/rev
                   {msgs.filter((m) => m.conversation_id === c.id).map((m) => (
                     <li key={m.id} className={clsx(m.role === "system" && "text-center text-xs text-stone")}>
                       {m.role !== "system" && <span className="text-stone">{m.role === "buyer" ? "Buyer" : m.role === "executive" ? "Executive" : "Assistant"}, {formatTime(m.created_at)}: </span>}
-                      <span className="whitespace-pre-wrap">{m.content}</span>
+                      <FormattedText text={m.content} className="inline-block align-top space-y-1" />
                       {typeof m.meta?.blocked === "string" && (
                         <span className="mt-1 block rounded-lg bg-bad-soft px-3 py-2 text-xs text-bad">
                           Blocked before sending: <span className="line-through">{String(m.meta.blocked)}</span>

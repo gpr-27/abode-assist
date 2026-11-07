@@ -10,6 +10,8 @@ import { HANDOFF_LABEL, type HandoffReason } from "@/lib/services/handoff";
 import { formatPhone } from "@/lib/phone";
 import { formatDateTime, formatShortDay, formatTime } from "@/lib/time";
 import { Badge, Notice } from "@/components/ui";
+import { MessageBody } from "@/components/message-body";
+import { FormattedText } from "@/components/formatted-text";
 import {
   BookVisitForm, CancelVisitButton, ConsentButton, DuplicateActions, LogCallButton, ReassignSelect, RefreshSummaryButton, ReplyForm, StatusSelect, TakeLeadButton,
 } from "@/components/staff/lead-actions";
@@ -133,7 +135,7 @@ export default async function LeadPage({ params }: PageProps<"/staff/leads/[id]"
                     <li key={m.id} className={clsx("flex", m.role === "buyer" ? "justify-start" : "justify-end")}>
                       <div className={clsx("max-w-[85%] rounded-2xl px-4 py-2.5 text-sm",
                         m.role === "buyer" ? "bg-paper-2" : m.role === "executive" ? "bg-indigo text-white" : "bg-indigo-soft")}>
-                        <p className="whitespace-pre-wrap">{m.content}</p>
+                        <FormattedText text={m.content} className="space-y-2" />
                         {typeof m.meta?.blocked === "string" && <p className="mt-2 text-xs line-through opacity-70" title="Blocked before sending">{String(m.meta.blocked)}</p>}
                         <p className={clsx("mt-1 text-[11px]", m.role === "executive" ? "text-white/70" : "text-stone")}>
                           {m.role === "buyer" ? "Buyer" : m.role === "executive" ? m.author_name ?? "Executive" : `Assistant${m.meta?.seeded ? " (sample conversation)" : m.meta?.model ? ` (${String(m.meta.model)})` : ""}${m.meta?.fallback ? " — offline fallback" : ""}`} · {formatTime(m.created_at)}
@@ -191,7 +193,7 @@ export default async function LeadPage({ params }: PageProps<"/staff/leads/[id]"
                       <span className="text-xs text-stone">{o.status === "sent" && o.sent_at ? formatDateTime(o.sent_at) : formatDateTime(o.send_at)}</span>
                     </div>
                     {o.status_note && <p className="text-xs text-stone">{o.status_note}</p>}
-                    <details className="mt-1"><summary className="cursor-pointer text-xs text-indigo">Show text</summary><p className="mt-1 whitespace-pre-wrap rounded-lg bg-paper-2 p-3 text-xs">{o.body}</p></details>
+                    <details className="mt-1"><summary className="cursor-pointer text-xs text-indigo">Show text</summary><MessageBody body={o.body} className="mt-1 rounded-lg bg-paper-2 p-3" /></details>
                   </li>
                 ))}
               </ul>
