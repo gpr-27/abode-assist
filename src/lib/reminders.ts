@@ -38,8 +38,16 @@ type Ctx = {
   optoutUrl: string;
 };
 
-const footer = (c: Ctx) =>
-  `${c.projectName} · RERA Reg. No. ${c.reraNo}\nReply STOP or visit ${c.optoutUrl} to stop messages.`;
+export type MsgLang = "en" | "hi" | "gu";
+const LOCALES: Record<MsgLang, string> = { en: "en-IN", hi: "hi-IN", gu: "gu-IN" };
+
+/** The legal footer: project, RERA number and a way to stop. Same facts in every language. */
+const footer = (c: Ctx, lang: MsgLang) =>
+  ({
+    en: `${c.projectName} · RERA Reg. No. ${c.reraNo}\nReply STOP or visit ${c.optoutUrl} to stop messages.`,
+    hi: `${c.projectName} · RERA पंजी. सं. ${c.reraNo}\nसंदेश बंद करने के लिए STOP लिखें या ${c.optoutUrl} खोलें।`,
+    gu: `${c.projectName} · RERA નોંધણી નં. ${c.reraNo}\nસંદેશા બંધ કરવા STOP લખો અથવા ${c.optoutUrl} ખોલો.`,
+  })[lang];
 
 const firstName = (n: string) => n.trim().split(/\s+/)[0];
 
@@ -52,18 +60,44 @@ export const TEMPLATES = {
   handoff: "handoff_intro_v1",
 } as const;
 
-export function renderMessage(kind: keyof typeof TEMPLATES, c: Ctx): string {
-  const when = formatDateTime(c.startsAt);
+export function renderMessage(kind: keyof typeof TEMPLATES, c: Ctx, lang: MsgLang = "en"): string {
+  const when = formatDateTime(c.startsAt, LOCALES[lang]);
+  const name = firstName(c.buyerName);
+  const f = footer(c, lang);
+  const meets = c.executiveName ? { en: ` ${c.executiveName} will meet you.`, hi: ` ${c.executiveName} आपसे मिलेंगे।`, gu: ` ${c.executiveName} તમને મળશે.` }[lang] : "";
+  const pin = c.mapUrl ? { en: `\nLocation: ${c.mapUrl}`, hi: `\nलोकेशन: ${c.mapUrl}`, gu: `\nલોકેશન: ${c.mapUrl}` }[lang] : "";
   switch (kind) {
     case "ack":
-      return `Hi ${firstName(c.buyerName)}, thank you for your interest in ${c.projectName}. You can ask us anything or book a site visit here, any time.\n${footer(c)}`;
+      return {
+        en: `Hi ${name}, thank you for your interest in ${c.projectName}. You can ask us anything or book a site visit here, any time.`,
+        hi: `नमस्ते ${name}, ${c.projectName} में आपकी रुचि के लिए धन्यवाद। आप यहाँ कभी भी कुछ भी पूछ सकते हैं या साइट विज़िट बुक कर सकते हैं।`,
+        gu: `નમસ્તે ${name}, ${c.projectName} માં રસ દાખવવા બદલ આભાર. તમે અહીં ગમે ત્યારે કંઈ પણ પૂછી શકો છો અથવા સાઇટ વિઝિટ બુક કરી શકો છો.`,
+      }[lang] + `\n${f}`;
     case "confirmation":
-      return `Hi ${firstName(c.buyerName)}, your site visit to ${c.projectName} is confirmed for ${when}.\nAddress: ${c.address}\nLocation: ${c.mapUrl}\n${footer(c)}`;
+      return {
+        en: `Hi ${name}, your site visit to ${c.projectName} is confirmed for ${when}.\nAddress: ${c.address}`,
+        hi: `नमस्ते ${name}, ${c.projectName} की आपकी साइट विज़िट ${when} के लिए पक्की हो गई है।\nपता: ${c.address}`,
+        gu: `નમસ્તે ${name}, ${c.projectName} ની તમારી સાઇટ વિઝિટ ${when} માટે પાકી થઈ ગઈ છે.\nસરનામું: ${c.address}`,
+      }[lang] + `${pin}\n${f}`;
     case "reminder_1d":
-      return `Reminder: your visit to ${c.projectName} is tomorrow, ${when}.${c.executiveName ? ` ${c.executiveName} will meet you.` : ""}\nLocation: ${c.mapUrl}\n${footer(c)}`;
+      return {
+        en: `Reminder: your visit to ${c.projectName} is tomorrow, ${when}.${meets}`,
+        hi: `याद दिलाना: ${c.projectName} में आपकी विज़िट कल, ${when} है।${meets}`,
+        gu: `યાદ અપાવીએ: ${c.projectName} માં તમારી વિઝિટ આવતીકાલે, ${when} છે.${meets}`,
+      }[lang] + `${pin}\n${f}`;
     case "reminder_2h":
-      return `See you in 2 hours at ${c.projectName} (${when}).\nLocation: ${c.mapUrl}\n${footer(c)}`;
-    case "handoff":
-      return `Hi ${firstName(c.buyerName)}, I'm ${c.executiveName ?? "from the sales team"} at ${c.projectName}. I've read your chat and will call you shortly.\n${footer(c)}`;
+      return {
+        en: `See you in 2 hours at ${c.projectName} (${when}).`,
+        hi: `2 घंटे में मिलते हैं: ${c.projectName} (${when})।`,
+        gu: `2 કલાકમાં મળીએ: ${c.projectName} (${when}).`,
+      }[lang] + `${pin}\n${f}`;
+    case "handoff": {
+      const who = c.executiveName;
+      return {
+        en: `Hi ${name}, I'm ${who ?? "from the sales team"} at ${c.projectName}. I've read your chat and will call you shortly.`,
+        hi: `नमस्ते ${name}, मैं ${who ?? "सेल्स टीम"} हूँ, ${c.projectName} की ओर से। आपकी चैट मेरे पास है और हम जल्द ही आपसे संपर्क करेंगे।`,
+        gu: `નમસ્તે ${name}, હું ${who ?? "સેલ્સ ટીમ"}, ${c.projectName} તરફથી. તમારી ચેટ મારી પાસે છે અને અમે ટૂંક સમયમાં તમારો સંપર્ક કરીશું.`,
+      }[lang] + `\n${f}`;
+    }
   }
 }

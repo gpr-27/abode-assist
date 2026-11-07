@@ -79,7 +79,11 @@ If you run without any LLM key, the chat still works: buttons, slot booking, the
 
 - **Hosting:** Vercel project `abode-assist`, linked to the GitHub repo (pushes to `main` deploy to production; other branches get preview URLs). Node.js runtime on Fluid Compute. Functions run in **`bom1` (Mumbai)**, next to the database.
 - **Database:** Supabase Postgres, project `abode-assist`, region ap-south-1 (Mumbai). The app connects as its own role to the private `app` schema through the transaction pooler.
-- **Cron:** `vercel.json` schedules `GET /api/cron/reminders` (Vercel sends `Authorization: Bearer $CRON_SECRET`). It dispatches due WhatsApp/SMS reminders from the outbox, which are mocked. Vercel Hobby allows one run a day, so the dispatcher also runs whenever staff open the Leads, Visits or Messages pages, and there's a **Send due messages now** button on Messages. On a paid plan, set the schedule to every 5 minutes.
+- **Reminders (cron):** `GET /api/cron/reminders` sends the WhatsApp/SMS reminders that have come due (mocked through the outbox table). It needs `Authorization: Bearer $CRON_SECRET`. Three things call it:
+  - `vercel.json` runs it once a day (the free Vercel plan allows nothing more often);
+  - `.github/workflows/reminders.yml` runs it **every 5 minutes**. It needs two repository secrets, `APP_URL` and `CRON_SECRET`, and does nothing until both are set (Settings → Secrets and variables → Actions);
+  - any chat message, and the Leads, Visits and Messages pages, also send what is due, and Messages has a **Send due messages now** button.
+  A reminder that only comes due after the visit has started is skipped, never sent.
 - **Deploy steps used:**
   ```bash
   vercel link --project abode-assist
@@ -102,7 +106,7 @@ If you run without any LLM key, the chat still works: buttons, slot booking, the
 | `GROQ_API_KEY_2` | optional | LLM chain step 3 |
 | `GEMINI_API_KEY` | optional | LLM chain step 4 (Gemini free tier; personal data is redacted first) |
 | `GEMINI_API_KEY_2` | optional | LLM chain step 5 |
-| `DEMO_SHOW_OTP` | optional | `true` (default) shows the simulated SMS code on screen; set `false` with a real SMS gateway |
+| `DEMO_MODE` | optional | `true` shows the simulated SMS one-time code on screen and the demo staff logins on the sign-in page. Off when unset, which is what a real deployment should do |
 | `DEMO_PASSWORD` | seed only | Password given to demo staff accounts by `pnpm db:seed` (default `Demo@1234`) |
 
 Any LLM key can be left empty; that step of the chain is skipped.

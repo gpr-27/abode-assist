@@ -1,21 +1,21 @@
 import "server-only";
 import { sql, type Tx } from "../db";
 import { BRAND } from "../brand";
-import { planReminders, renderMessage, TEMPLATES } from "../reminders";
+import { planReminders, renderMessage, TEMPLATES, type MsgLang } from "../reminders";
 
 export function appUrl() {
   return process.env.APP_URL ?? (process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : "http://localhost:3000");
 }
 
 type MsgCtxRow = {
-  lead_id: string; buyer_name: string; optout_token: string; opted_out_at: Date | null; consent_at: Date | null;
+  lead_id: string; language: MsgLang; buyer_name: string; optout_token: string; opted_out_at: Date | null; consent_at: Date | null;
   project_name: string; rera_no: string; address: string; map_url: string; executive_name: string | null;
 };
 
 async function ctxForLead(tx: Tx, leadId: string, projectId: string | null) {
   // No project yet (e.g. a hoarding call): the message names the developer and lists every RERA number.
   const [r] = await tx<MsgCtxRow[]>`
-    select l.id as lead_id, l.name as buyer_name, l.optout_token, l.opted_out_at, l.consent_at,
+    select l.id as lead_id, l.language, l.name as buyer_name, l.optout_token, l.opted_out_at, l.consent_at,
            coalesce(p.name, ${BRAND}::text) as project_name,
            coalesce(p.rera_no, (select string_agg(name || ': ' || rera_no, '; ' order by name) from projects)) as rera_no,
            coalesce(p.address, 'our site offices') as address,
@@ -37,7 +37,7 @@ export async function queueAck(tx: Tx, leadId: string, projectId: string | null)
   const r = await ctxForLead(tx, leadId, projectId);
   if (!r || !r.consent_at || r.opted_out_at) return false;
   await tx`insert into outbox (lead_id, kind, template, body, send_at, status, sent_at)
-           values (${leadId}, 'ack', ${TEMPLATES.ack}, ${renderMessage("ack", ctx(r, new Date()))}, now(), 'sent', now())`;
+           values (${leadId}, 'ack', ${TEMPLATES.ack}, ${renderMessage("ack", ctx(r, new Date()), r.language)}, now(), 'sent', now())`;
   await tx`update leads set first_response_at = coalesce(first_response_at, now()) where id = ${leadId}`;
   return true;
 }
@@ -49,11 +49,11 @@ export async function queueVisitMessages(tx: Tx, leadId: string, visitId: string
   const optedOut = !!r.opted_out_at;
   const c = ctx(r, startsAt);
   await tx`insert into outbox (lead_id, visit_id, kind, template, body, send_at, status, sent_at, status_note)
-           values (${leadId}, ${visitId}, 'confirmation', ${TEMPLATES.confirmation}, ${renderMessage("confirmation", c)}, now(),
+           values (${leadId}, ${visitId}, 'confirmation', ${TEMPLATES.confirmation}, ${renderMessage("confirmation", c, r.language)}, now(),
                    ${optedOut ? "skipped" : "sent"}, ${optedOut ? null : new Date()}, ${optedOut ? "Buyer opted out" : null})`;
   for (const p of planReminders(startsAt, new Date(), optedOut)) {
     await tx`insert into outbox (lead_id, visit_id, kind, template, body, send_at, status, status_note)
-             values (${leadId}, ${visitId}, ${p.kind}, ${TEMPLATES[p.kind]}, ${renderMessage(p.kind, c)}, ${p.send_at}, ${p.status}, ${p.note ?? null})`;
+             values (${leadId}, ${visitId}, ${p.kind}, ${TEMPLATES[p.kind]}, ${renderMessage(p.kind, c, r.language)}, ${p.send_at}, ${p.status}, ${p.note ?? null})`;
   }
 }
 
@@ -66,7 +66,7 @@ export async function queueHandoffIntro(tx: Tx, leadId: string) {
   const r = await ctxForLead(tx, leadId, null);
   if (!r || !r.consent_at || r.opted_out_at || !r.executive_name) return;
   await tx`insert into outbox (lead_id, kind, template, body, send_at, status, sent_at)
-           values (${leadId}, 'handoff', ${TEMPLATES.handoff}, ${renderMessage("handoff", ctx(r, new Date()))}, now(), 'sent', now())`;
+           values (${leadId}, 'handoff', ${TEMPLATES.handoff}, ${renderMessage("handoff", ctx(r, new Date()), r.language)}, now(), 'sent', now())`;
 }
 
 /**
@@ -80,11 +80,17 @@ export async function dispatchDue() {
         from leads l
        where l.id = o.lead_id and o.status = 'scheduled' and o.send_at <= now() and l.opted_out_at is not null
       returning o.id`;
+    // A reminder that only comes due after the visit has started is pointless ("see you in 2 hours" after the visit).
+    const late = await tx`
+      update outbox o set status = 'skipped', status_note = 'Visit had already started'
+        from visits v join visit_slots s on s.id = v.slot_id
+       where v.id = o.visit_id and o.status = 'scheduled' and o.send_at <= now() and s.starts_at <= now()
+      returning o.id`;
     const sent = await tx`
       update outbox set status = 'sent', sent_at = now()
        where status = 'scheduled' and send_at <= now()
       returning id`;
-    return { sent: sent.length, skipped: skipped.length };
+    return { sent: sent.length, skipped: skipped.length + late.length };
   });
 }
 
