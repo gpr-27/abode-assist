@@ -252,7 +252,7 @@ async function main() {
       for (const [role, content, cards] of lines) {
         t += 25_000 + Math.floor(rnd() * 30_000);
         await tx`insert into messages (conversation_id, role, content, cards, meta, created_at)
-                 values (${c.id}, ${role}, ${content}, ${tx.json((cards ?? []) as never)}, ${tx.json(role === "assistant" ? { provider: "anthropic", model: "claude-sonnet-5-5" } : {})}, ${new Date(t)})`;
+                 values (${c.id}, ${role}, ${content}, ${tx.json((cards ?? []) as never)}, ${tx.json(role === "assistant" ? { seeded: true } : {})}, ${new Date(t)})`;
       }
       return c.id;
     };

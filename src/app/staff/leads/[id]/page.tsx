@@ -136,7 +136,7 @@ export default async function LeadPage({ params }: PageProps<"/staff/leads/[id]"
                         <p className="whitespace-pre-wrap">{m.content}</p>
                         {typeof m.meta?.blocked === "string" && <p className="mt-2 text-xs line-through opacity-70" title="Blocked before sending">{String(m.meta.blocked)}</p>}
                         <p className={clsx("mt-1 text-[11px]", m.role === "executive" ? "text-white/70" : "text-stone")}>
-                          {m.role === "buyer" ? "Buyer" : m.role === "executive" ? m.author_name ?? "Executive" : `Assistant${m.meta?.model ? ` (${String(m.meta.model)})` : ""}${m.meta?.fallback ? " — offline fallback" : ""}`} · {formatTime(m.created_at)}
+                          {m.role === "buyer" ? "Buyer" : m.role === "executive" ? m.author_name ?? "Executive" : `Assistant${m.meta?.seeded ? " (sample conversation)" : m.meta?.model ? ` (${String(m.meta.model)})` : ""}${m.meta?.fallback ? " — offline fallback" : ""}`} · {formatTime(m.created_at)}
                         </p>
                       </div>
                     </li>
