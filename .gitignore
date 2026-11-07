@@ -45,3 +45,4 @@ next-env.d.ts
 /submission/
 docs/TDD.html
 .claude/
+.vitest/
