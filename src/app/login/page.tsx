@@ -3,6 +3,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getSession, isStaff } from "@/lib/auth/session";
 import { StaffLoginForm } from "./form";
+import { BRAND } from "@/lib/brand";
 
 export const metadata: Metadata = { title: "Staff sign in", robots: { index: false } };
 
@@ -10,7 +11,7 @@ export default async function StaffLogin() {
   if (isStaff(await getSession())) redirect("/staff/leads");
   return (
     <main className="flex min-h-dvh flex-col items-center justify-center px-4 py-12">
-      <Link href="/" className="display text-xl mb-10">Company A Homes</Link>
+      <Link href="/" className="display text-xl mb-10">{BRAND}</Link>
       <div className="w-full max-w-sm rounded-3xl border border-line bg-white p-7">
         <h1 className="display text-3xl">Sales desk</h1>
         <p className="mt-2 text-sm text-stone">For sales executives and the sales head.</p>

@@ -3,12 +3,14 @@ import { Jaali } from "@/components/ui";
 import { currentLang } from "@/lib/lang";
 import { getFacts, getProjects } from "@/lib/queries";
 import { T } from "@/lib/i18n";
+import { LOCALE } from "@/lib/assistant/copy";
 
 export default async function Home() {
   const lang = await currentLang();
   const t = T[lang];
   const [projects, facts] = await Promise.all([getProjects(), getFacts(null)]);
   const fact = (projectId: string, topic: string) => facts.find((f) => f.project_id === projectId && f.topic === topic)?.answer ?? null;
+  const places = new Intl.ListFormat(LOCALE[lang], { type: "conjunction" }).format([...new Set(projects.map((p) => p.locality.split(",")[0]))]);
   const details = projects.map((p) => ({
     ...p,
     price: fact(p.id, "Indicative price range"),
@@ -21,7 +23,7 @@ export default async function Home() {
       <section className="mx-auto grid max-w-6xl items-center gap-10 px-4 sm:px-8 pt-6 pb-16 sm:pt-14 sm:pb-24 md:grid-cols-[1.25fr_1fr]">
         <div className="rise">
           <h1 className="display text-[2.4rem] leading-[1.08] sm:text-6xl sm:leading-[1.04] max-w-[16ch]">{t.heroTitle}</h1>
-          <p className="mt-6 max-w-[52ch] text-lg text-stone leading-relaxed">{t.heroSub}</p>
+          <p className="mt-6 max-w-[52ch] text-lg text-stone leading-relaxed">{t.heroSub(places)}</p>
           <div className="mt-9 flex flex-wrap gap-3">
             <Link href="/chat" className="btn btn-primary">{t.startChat}</Link>
             <Link href="/chat?intent=visit" className="btn btn-ghost">{t.bookVisit}</Link>

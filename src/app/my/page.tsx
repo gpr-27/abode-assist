@@ -6,6 +6,7 @@ import { formatDateTime } from "@/lib/time";
 import { formatPhone } from "@/lib/phone";
 import { Badge, Empty } from "@/components/ui";
 import { cancelMyVisit, setMessages, signOut } from "./actions";
+import { BRAND } from "@/lib/brand";
 
 export const metadata: Metadata = { title: "My site visits", robots: { index: false } };
 
@@ -36,7 +37,7 @@ export default async function MyVisits() {
   return (
     <main className="mx-auto w-full max-w-3xl px-4 sm:px-8 py-8">
       <header className="flex items-center justify-between">
-        <Link href="/" className="display text-xl">Company A Homes</Link>
+        <Link href="/" className="display text-xl">{BRAND}</Link>
         <form action={signOut}><button className="btn btn-quiet btn-sm">Sign out</button></form>
       </header>
 

@@ -1,10 +1,12 @@
 import { cookies } from "next/headers";
+import { after } from "next/server";
 import { randomBytes } from "node:crypto";
 import { z } from "zod";
 import { sql } from "@/lib/db";
 import { asLang } from "@/lib/i18n";
 import { getOrCreateConversation, greeting, handleAction, handleText, loadHistory } from "@/lib/assistant/agent";
 import { getProjects } from "@/lib/queries";
+import { dispatchDue } from "@/lib/services/outbox";
 
 export const maxDuration = 60;
 
@@ -81,6 +83,8 @@ export async function POST(req: Request) {
 
   try {
     const messages = body.action ? await handleAction(conv, body.action, body.lang) : await handleText(conv, body.text!, body.lang);
+    // Free plans only allow a daily cron, so any activity also sends reminders that have come due.
+    after(() => dispatchDue().catch((e) => console.error("dispatch failed", e?.message)));
     return Response.json({ messages });
   } catch (err) {
     console.error("chat POST failed", (err as Error).message);

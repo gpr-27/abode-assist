@@ -3,6 +3,7 @@ import { requireRole } from "@/lib/auth/session";
 import { staffCounts } from "@/lib/staff/queries";
 import { StaffNav } from "@/components/staff/nav";
 import { signOut } from "./actions";
+import { BRAND } from "@/lib/brand";
 
 export const metadata = { title: { default: "Sales desk", template: "%s · Sales desk" }, robots: { index: false } };
 
@@ -29,7 +30,7 @@ export default async function StaffLayout({ children }: LayoutProps<"/staff">) {
       <aside className="hidden md:flex md:flex-col md:gap-8 md:border-r md:border-line md:px-4 md:py-6 md:sticky md:top-0 md:h-dvh">
         <Link href="/staff/leads" className="px-3">
           <span className="display text-xl block">Sales desk</span>
-          <span className="text-xs text-stone">Company A Homes</span>
+          <span className="text-xs text-stone">{BRAND}</span>
         </Link>
         <StaffNav items={deskItems} />
         <div className="mt-auto px-3 text-sm">

@@ -1,4 +1,5 @@
 import type { Lang } from "./assistant/guardrails";
+import { BRAND } from "./brand";
 
 export const LANGS: { code: Lang; label: string; short: string }[] = [
   { code: "en", label: "English", short: "EN" },
@@ -11,7 +12,7 @@ export function asLang(v: string | null | undefined): Lang {
 }
 
 type Dict = {
-  brand: string; heroTitle: string; heroSub: string; startChat: string; bookVisit: string; homes: string; from: string;
+  brand: string; heroTitle: string; heroSub: (places: string) => string; startChat: string; bookVisit: string; homes: string; from: string;
   possession: string; rera: string; viewProject: string; howTitle: string; how: [string, string][]; priceNote: string;
   privacy: string; staff: string; myVisits: string; talkToPerson: string; typeHere: string; send: string; chatTitle: string;
   nextSlots: string; noSlotsSoon: string; facts: string; directions: string; askAbout: string; chatOffline: string; retry: string;
@@ -22,9 +23,9 @@ type Dict = {
 
 export const T: Record<Lang, Dict> = {
   en: {
-    brand: "Company A Homes",
+    brand: BRAND,
     heroTitle: "Ask about your next home, any hour. Visit when it suits you.",
-    heroSub: "2 and 3 BHK homes in Shela and Gota, Ahmedabad. Answers in English, हिंदी or ગુજરાતી, and site visits booked in real open slots.",
+    heroSub: (places) => `2 and 3 BHK homes in ${places}, Ahmedabad. Answers in English, हिंदी or ગુજરાતી, and site visits booked in real open slots.`,
     startChat: "Start a chat", bookVisit: "Book a site visit", homes: "Homes", from: "Indicative price", possession: "Possession", rera: "RERA Reg. No.",
     viewProject: "See the project",
     howTitle: "How a site visit works",
@@ -41,9 +42,9 @@ export const T: Record<Lang, Dict> = {
     poweredNote: "Answers come from the developer's fact sheet. For anything not covered, a person will confirm.", signIn: "Sign in",
   },
   hi: {
-    brand: "Company A Homes",
+    brand: BRAND,
     heroTitle: "अपने अगले घर के बारे में कभी भी पूछें। जब सुविधा हो, तब विज़िट करें।",
-    heroSub: "शेला और गोता, अहमदाबाद में 2 और 3 BHK घर। English, हिंदी या ગુજરાતી में जवाब, और असली खाली समय में साइट विज़िट बुकिंग।",
+    heroSub: (places) => `${places}, अहमदाबाद में 2 और 3 BHK घर। English, हिंदी या ગુજરાતી में जवाब, और असली खाली समय में साइट विज़िट बुकिंग।`,
     startChat: "चैट शुरू करें", bookVisit: "साइट विज़िट बुक करें", homes: "घर", from: "अनुमानित कीमत", possession: "पज़ेशन", rera: "RERA रजि. नं.",
     viewProject: "प्रोजेक्ट देखें",
     howTitle: "साइट विज़िट कैसे होती है",
@@ -60,9 +61,9 @@ export const T: Record<Lang, Dict> = {
     poweredNote: "जवाब डेवलपर की फ़ैक्ट शीट से आते हैं। जो इसमें नहीं है, वह एक व्यक्ति पुष्टि करेगा।", signIn: "साइन इन",
   },
   gu: {
-    brand: "Company A Homes",
+    brand: BRAND,
     heroTitle: "તમારા આગલા ઘર વિશે ગમે ત્યારે પૂછો. અનુકૂળ હોય ત્યારે મુલાકાત લો.",
-    heroSub: "શેલા અને ગોતા, અમદાવાદમાં 2 અને 3 BHK ઘરો. English, हिंदी કે ગુજરાતીમાં જવાબ, અને સાચા ખાલી સમયમાં સાઇટ વિઝિટ બુકિંગ.",
+    heroSub: (places) => `${places}, અમદાવાદમાં 2 અને 3 BHK ઘરો. English, हिंदी કે ગુજરાતીમાં જવાબ, અને સાચા ખાલી સમયમાં સાઇટ વિઝિટ બુકિંગ.`,
     startChat: "ચેટ શરૂ કરો", bookVisit: "સાઇટ વિઝિટ બુક કરો", homes: "ઘરો", from: "અંદાજિત કિંમત", possession: "પઝેશન", rera: "RERA રજિ. નં.",
     viewProject: "પ્રોજેક્ટ જુઓ",
     howTitle: "સાઇટ વિઝિટ કેવી રીતે થાય છે",

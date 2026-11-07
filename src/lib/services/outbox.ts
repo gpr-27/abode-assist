@@ -1,5 +1,6 @@
 import "server-only";
 import { sql, type Tx } from "../db";
+import { BRAND } from "../brand";
 import { planReminders, renderMessage, TEMPLATES } from "../reminders";
 
 export function appUrl() {
@@ -15,9 +16,9 @@ async function ctxForLead(tx: Tx, leadId: string, projectId: string | null) {
   // No project yet (e.g. a hoarding call): the message names the developer and lists every RERA number.
   const [r] = await tx<MsgCtxRow[]>`
     select l.id as lead_id, l.name as buyer_name, l.optout_token, l.opted_out_at, l.consent_at,
-           coalesce(p.name, 'Company A Homes') as project_name,
+           coalesce(p.name, ${BRAND}::text) as project_name,
            coalesce(p.rera_no, (select string_agg(name || ': ' || rera_no, '; ' order by name) from projects)) as rera_no,
-           coalesce(p.address, 'our site offices in Shela and Gota') as address,
+           coalesce(p.address, 'our site offices') as address,
            coalesce(p.map_url, '') as map_url, u.name as executive_name
       from leads l
       left join projects p on p.id = coalesce(${projectId}::uuid, l.project_id)

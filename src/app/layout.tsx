@@ -7,10 +7,18 @@ const body = Hanken_Grotesk({ variable: "--font-body", subsets: ["latin"], displ
 const deva = Mukta({ variable: "--font-deva", subsets: ["devanagari"], weight: ["400", "500", "600"], display: "swap", preload: false });
 const guj = Hind_Vadodara({ variable: "--font-guj", subsets: ["gujarati"], weight: ["400", "500", "600"], display: "swap", preload: false });
 
-export const metadata: Metadata = {
-  title: { default: "Homes in Shela and Gota · Site visits", template: "%s · Abode Assist" },
-  description: "Ask about 2 and 3 BHK homes in Shela and Gota, Ahmedabad, and book a site visit in a real open slot, any hour, in English, Hindi or Gujarati.",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  let places = "Ahmedabad";
+  try {
+    const { getProjects } = await import("@/lib/queries");
+    const list = [...new Set((await getProjects()).map((p) => p.locality.split(",")[0]))];
+    if (list.length) places = new Intl.ListFormat("en", { type: "conjunction" }).format(list);
+  } catch { /* the page still renders with a generic title if the database is unreachable */ }
+  return {
+    title: { default: `Homes in ${places} · Site visits`, template: "%s · Abode Assist" },
+    description: `Ask about 2 and 3 BHK homes in ${places}, and book a site visit in a real open slot, any hour, in English, Hindi or Gujarati.`,
+  };
+}
 
 export const viewport: Viewport = { themeColor: "#fbfbf9", width: "device-width", initialScale: 1 };
 
